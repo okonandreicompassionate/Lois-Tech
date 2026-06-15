@@ -7,13 +7,11 @@ import { Trash2, Plus, CheckCircle, X, ChevronDown, ChevronUp } from "lucide-rea
 
 const ADMIN_PASSWORD = process.env.NEXT_PUBLIC_ADMIN_PASSWORD ?? "";
 
-const ALL_SIZES = ["XS", "S", "M", "L", "XL", "XXL"];
-
 const inputClass =
   "w-full bg-zinc-900 border border-zinc-800 text-white text-sm px-4 py-3 rounded-xl outline-none focus:border-zinc-600 transition-colors placeholder-zinc-600";
 
 type Category = { id: string; name: string; slug: string };
-type Variant = { id?: string; size: string; stock: number };
+type Variant = { id?: string; option_label: string; option_value: string; stock: number };
 type ProductImage = { id?: string; image_url: string; position: number };
 
 type Product = {
@@ -24,6 +22,7 @@ type Product = {
   image_url: string;
   category_id: string;
   is_featured: boolean;
+  is_commission: boolean;
   variants: Variant[];
   product_images: ProductImage[];
 };
@@ -62,8 +61,8 @@ export default function EditProductsPage() {
     const { data, error } = await supabase
       .from("products")
       .select(`
-        id, name, description, price, image_url, category_id, is_featured,
-        variants (id, size, stock),
+        id, name, description, price, image_url, category_id, is_featured, is_commission,
+        variants (id, option_label, option_value, stock),
         product_images (id, image_url, position)
       `)
       .order("created_at", { ascending: false });
@@ -72,9 +71,7 @@ export default function EditProductsPage() {
 
     const parsed: Product[] = (data ?? []).map((p: any) => ({
       ...p,
-      variants: (p.variants ?? []).sort(
-        (a: Variant, b: Variant) => ALL_SIZES.indexOf(a.size) - ALL_SIZES.indexOf(b.size)
-      ),
+      variants: p.variants ?? [],
       product_images: (p.product_images ?? []).sort(
         (a: ProductImage, b: ProductImage) => a.position - b.position
       ),
@@ -95,21 +92,26 @@ export default function EditProductsPage() {
     setEditData((prev) => ({ ...prev, [id]: { ...prev[id], [field]: value } }));
   }
 
-  function updateVariantStock(productId: string, idx: number, stock: number) {
+  function updateVariant(productId: string, idx: number, field: keyof Variant, value: string | number) {
     const variants = [...editData[productId].variants];
-    variants[idx] = { ...variants[idx], stock };
+    variants[idx] = { ...variants[idx], [field]: value };
     updateField(productId, "variants", variants);
   }
 
-  function toggleVariantSize(productId: string, size: string) {
+  function addVariantRow(productId: string) {
     const variants = editData[productId].variants;
-    const exists = variants.find((v) => v.size === size);
-    const updated = exists
-      ? variants.filter((v) => v.size !== size)
-      : [...variants, { size, stock: 0 }].sort(
-          (a, b) => ALL_SIZES.indexOf(a.size) - ALL_SIZES.indexOf(b.size)
-        );
-    updateField(productId, "variants", updated);
+    const label = variants[0]?.option_label ?? "Color";
+    updateField(productId, "variants", [...variants, { option_label: label, option_value: "", stock: 0 }]);
+  }
+
+  function removeVariantRow(productId: string, idx: number) {
+    const variants = editData[productId].variants.filter((_, i) => i !== idx);
+    updateField(productId, "variants", variants);
+  }
+
+  function updateAllOptionLabels(productId: string, label: string) {
+    const variants = editData[productId].variants.map((v) => ({ ...v, option_label: label }));
+    updateField(productId, "variants", variants);
   }
 
   function updateImageUrl(productId: string, idx: number, url: string) {
@@ -136,7 +138,6 @@ export default function EditProductsPage() {
     setSaving(id);
 
     try {
-      // 1. Update product core fields
       const { error: pErr } = await supabase
         .from("products")
         .update({
@@ -146,39 +147,38 @@ export default function EditProductsPage() {
           image_url: p.image_url,
           category_id: p.category_id,
           is_featured: p.is_featured,
+          is_commission: p.is_commission,
         })
         .eq("id", id);
       if (pErr) throw new Error("Product update failed: " + pErr.message);
 
-      // 2. Delete ALL existing variants for this product
       const { error: delVErr } = await supabase
         .from("variants")
         .delete()
         .eq("product_id", id);
       if (delVErr) throw new Error("Failed to clear variants: " + delVErr.message);
 
-      // 3. Reinsert variants fresh — no duplicates possible
-      if (p.variants.length > 0) {
+      const validVariants = p.variants.filter((v) => v.option_value.trim() !== "");
+      if (validVariants.length > 0) {
         const { error: vErr } = await supabase
           .from("variants")
           .insert(
-            p.variants.map((v) => ({
+            validVariants.map((v) => ({
               product_id: id,
-              size: v.size,
+              option_label: v.option_label,
+              option_value: v.option_value,
               stock: v.stock,
             }))
           );
         if (vErr) throw new Error("Failed to save variants: " + vErr.message);
       }
 
-      // 4. Delete ALL existing images for this product
       const { error: delIErr } = await supabase
         .from("product_images")
         .delete()
         .eq("product_id", id);
       if (delIErr) throw new Error("Failed to clear images: " + delIErr.message);
 
-      // 5. Reinsert valid images fresh — no duplicates possible
       const validImages = p.product_images.filter(
         (img) => img.image_url.trim() !== ""
       );
@@ -216,13 +216,12 @@ export default function EditProductsPage() {
     await fetchProducts();
   }
 
-  // ── LOGIN ──
   if (!authed) {
     return (
       <div className="min-h-screen bg-zinc-950 text-white flex items-center justify-center px-4">
         <div className="w-full max-w-sm space-y-6">
           <div className="text-center">
-            <h1 className="font-bold tracking-[0.4em] text-sm uppercase mb-2">EXILES</h1>
+            <h1 className="font-bold tracking-[0.4em] text-sm uppercase mb-2">LOISTECH</h1>
             <p className="text-zinc-600 text-xs tracking-widest uppercase">Admin Access</p>
           </div>
           <div className="space-y-3">
@@ -246,15 +245,13 @@ export default function EditProductsPage() {
     );
   }
 
-  // ── MAIN ──
   return (
     <div className="min-h-screen bg-zinc-950 text-white">
 
-      {/* NAV */}
       <nav className="sticky top-0 z-50 bg-zinc-950/80 backdrop-blur-xl border-b border-zinc-800/60">
         <div className="max-w-4xl mx-auto px-4 sm:px-8 py-4 flex items-center justify-between">
           <div className="flex items-center gap-6">
-            <h1 className="font-bold tracking-[0.4em] text-sm uppercase">EXILES Admin</h1>
+            <h1 className="font-bold tracking-[0.4em] text-sm uppercase">LOISTECH Admin</h1>
             <span className="text-zinc-700 text-xs">|</span>
             <span className="text-zinc-400 text-xs tracking-widest uppercase">Edit Products</span>
           </div>
@@ -286,12 +283,13 @@ export default function EditProductsPage() {
           const isOpen = expandedId === product.id;
           if (!ed) return null;
 
+          const currentLabel = ed.variants[0]?.option_label ?? "Color";
+
           return (
             <div
               key={product.id}
               className="border border-zinc-800/60 rounded-2xl overflow-hidden bg-zinc-900/30"
             >
-              {/* ROW HEADER */}
               <div
                 className="flex items-center gap-4 px-5 py-4 cursor-pointer hover:bg-zinc-800/20 transition-colors"
                 onClick={() => toggleExpand(product.id)}
@@ -310,10 +308,15 @@ export default function EditProductsPage() {
                   <p className="text-sm text-white font-medium truncate">{product.name}</p>
                   <p className="text-xs text-zinc-500 mt-0.5">
                     ₦{(product.price / 100).toLocaleString()} &nbsp;·&nbsp;{" "}
-                    {product.variants.length} size{product.variants.length !== 1 ? "s" : ""}
+                    {product.variants.length} option{product.variants.length !== 1 ? "s" : ""}
                     {product.is_featured && (
                       <span className="ml-2 text-[10px] bg-white/10 text-zinc-300 px-2 py-0.5 rounded-full">
-                        New Arrival
+                        Featured
+                      </span>
+                    )}
+                    {product.is_commission && (
+                      <span className="ml-2 text-[10px] bg-amber-400/10 text-amber-400 px-2 py-0.5 rounded-full">
+                        Commission
                       </span>
                     )}
                   </p>
@@ -341,7 +344,6 @@ export default function EditProductsPage() {
                 )}
               </div>
 
-              {/* EXPANDED EDIT FORM */}
               {isOpen && (
                 <div className="border-t border-zinc-800/60 px-5 py-6 space-y-6">
                   <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
@@ -398,15 +400,15 @@ export default function EditProductsPage() {
 
                           <label className="flex items-center gap-3 px-4 py-3 bg-zinc-900 border border-zinc-800 rounded-xl cursor-pointer hover:border-zinc-700 transition-colors">
                             <div
-                              className={`w-10 h-5 rounded-full transition-colors relative ${ed.is_featured ? "bg-white" : "bg-zinc-700"}`}
+                              className={`w-10 h-5 rounded-full transition-colors relative flex-shrink-0 ${ed.is_featured ? "bg-white" : "bg-zinc-700"}`}
                             >
                               <div
                                 className={`absolute top-0.5 w-4 h-4 bg-zinc-950 rounded-full transition-all ${ed.is_featured ? "left-5" : "left-0.5"}`}
                               />
                             </div>
                             <div>
-                              <p className="text-xs text-white">Mark as New Arrival</p>
-                              <p className="text-[10px] text-zinc-600">Shows "New" badge on product card</p>
+                              <p className="text-xs text-white">Mark as Featured</p>
+                              <p className="text-[10px] text-zinc-600">Shows New badge on product card</p>
                             </div>
                             <input
                               type="checkbox"
@@ -415,52 +417,89 @@ export default function EditProductsPage() {
                               className="hidden"
                             />
                           </label>
+
+                          <label className="flex items-center gap-3 px-4 py-3 bg-zinc-900 border border-zinc-800 rounded-xl cursor-pointer hover:border-zinc-700 transition-colors">
+                            <div
+                              className={`w-10 h-5 rounded-full transition-colors relative flex-shrink-0 ${ed.is_commission ? "bg-amber-400" : "bg-zinc-700"}`}
+                            >
+                              <div
+                                className={`absolute top-0.5 w-4 h-4 bg-zinc-950 rounded-full transition-all ${ed.is_commission ? "left-5" : "left-0.5"}`}
+                              />
+                            </div>
+                            <div>
+                              <p className="text-xs text-white">Commission / Bespoke Item</p>
+                              <p className="text-[10px] text-zinc-600">Shows Request Consultation instead of Add to Cart</p>
+                            </div>
+                            <input
+                              type="checkbox"
+                              checked={ed.is_commission}
+                              onChange={(e) => updateField(product.id, "is_commission", e.target.checked)}
+                              className="hidden"
+                            />
+                          </label>
                         </div>
                       </div>
 
-                      {/* Sizes & Stock */}
+                      {/* OPTIONS */}
                       <div>
                         <p className="text-[10px] tracking-[0.4em] uppercase text-zinc-500 mb-3">
-                          Sizes & Stock
+                          Product Options
                         </p>
-                        <div className="flex gap-2 flex-wrap mb-3">
-                          {ALL_SIZES.map((size) => {
-                            const active = ed.variants.find((v) => v.size === size);
-                            return (
+
+                        <div className="mb-3">
+                          <p className="text-xs text-zinc-400 mb-2">Option type</p>
+                          <div className="flex gap-2 flex-wrap">
+                            {["Color", "Finish", "Wattage", "Storage", "Model"].map((label) => (
                               <button
-                                key={size}
-                                onClick={() => toggleVariantSize(product.id, size)}
-                                className={`w-12 h-12 rounded-xl text-xs font-medium transition-all border ${
-                                  active
+                                key={label}
+                                onClick={() => updateAllOptionLabels(product.id, label)}
+                                className={`px-4 py-2 rounded-xl text-xs transition-all border ${
+                                  currentLabel === label
                                     ? "bg-white text-zinc-950 border-white"
                                     : "bg-zinc-900 text-zinc-500 border-zinc-800 hover:border-zinc-600"
                                 }`}
                               >
-                                {size}
+                                {label}
                               </button>
-                            );
-                          })}
+                            ))}
+                          </div>
                         </div>
+
                         <div className="space-y-2">
                           {ed.variants.map((v, idx) => (
-                            <div key={v.size} className="flex items-center gap-3">
-                              <span className="text-xs text-zinc-400 w-8 text-center font-medium">{v.size}</span>
+                            <div key={idx} className="flex items-center gap-2">
+                              <input
+                                type="text"
+                                placeholder={`${currentLabel} (e.g. Black)`}
+                                value={v.option_value}
+                                onChange={(e) => updateVariant(product.id, idx, "option_value", e.target.value)}
+                                className={`${inputClass} flex-1`}
+                              />
                               <input
                                 type="number"
                                 min={0}
-                                value={v.stock}
-                                onChange={(e) =>
-                                  updateVariantStock(product.id, idx, parseInt(e.target.value) || 0)
-                                }
-                                className={`${inputClass} flex-1`}
                                 placeholder="Stock"
+                                value={v.stock}
+                                onChange={(e) => updateVariant(product.id, idx, "stock", parseInt(e.target.value) || 0)}
+                                className={`${inputClass} w-24`}
                               />
-                              <span className="text-[10px] text-zinc-600 w-10">
-                                {v.stock === 0 ? "OOS" : "in stock"}
-                              </span>
+                              <button
+                                onClick={() => removeVariantRow(product.id, idx)}
+                                className="text-zinc-700 hover:text-red-400 transition-colors flex-shrink-0"
+                              >
+                                <Trash2 size={14} />
+                              </button>
                             </div>
                           ))}
                         </div>
+
+                        <button
+                          onClick={() => addVariantRow(product.id)}
+                          className="flex items-center gap-1 text-[10px] tracking-widest uppercase text-zinc-500 hover:text-white transition-colors mt-3"
+                        >
+                          <Plus size={11} />
+                          Add Another {currentLabel}
+                        </button>
                       </div>
                     </div>
 
@@ -540,7 +579,6 @@ export default function EditProductsPage() {
                     </div>
                   </div>
 
-                  {/* SAVE BUTTON */}
                   <div className="pt-4 border-t border-zinc-800/60">
                     <button
                       onClick={() => handleSave(product.id)}

@@ -3,14 +3,12 @@
 import { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
 import { supabase } from "../../lib/supabase";
-import { Plus, Trash2, Upload, CheckCircle } from "lucide-react";
+import { Plus, Trash2, CheckCircle } from "lucide-react";
+
 const ADMIN_PASSWORD = process.env.NEXT_PUBLIC_ADMIN_PASSWORD ?? "";
 
 type Category = { id: string; name: string; slug: string };
-
-type SizeRow = { size: string; stock: number };
-
-const ALL_SIZES = ["XS", "S", "M", "L", "XL", "XXL"];
+type VariantRow = { option_value: string; stock: number };
 
 const inputClass = "w-full bg-zinc-900 border border-zinc-800 text-white text-sm px-4 py-3 rounded-xl outline-none focus:border-zinc-600 transition-colors placeholder-zinc-600";
 
@@ -30,14 +28,12 @@ export default function AdminPage() {
     image_url: "",
     category_id: "",
     is_featured: false,
+    is_commission: false,
   });
 
-  const [sizes, setSizes] = useState<SizeRow[]>([
-    { size: "XS", stock: 0 },
-    { size: "S", stock: 0 },
-    { size: "M", stock: 0 },
-    { size: "L", stock: 0 },
-    { size: "XL", stock: 0 },
+  const [optionLabel, setOptionLabel] = useState("Color");
+  const [variants, setVariants] = useState<VariantRow[]>([
+    { option_value: "", stock: 0 },
   ]);
 
   const [images, setImages] = useState<string[]>(["", "", ""]);
@@ -52,11 +48,8 @@ export default function AdminPage() {
   }
 
   function handleLogin() {
-    if (password === ADMIN_PASSWORD) {
-      setAuthed(true);
-    } else {
-      alert("Wrong password!");
-    }
+    if (password === ADMIN_PASSWORD) setAuthed(true);
+    else alert("Wrong password!");
   }
 
   function handleFormChange(e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement | HTMLTextAreaElement>) {
@@ -67,21 +60,18 @@ export default function AdminPage() {
     setForm({ ...form, [target.name]: value });
   }
 
-  function handleSizeStock(idx: number, stock: number) {
-    const updated = [...sizes];
-    updated[idx].stock = stock;
-    setSizes(updated);
+  function addVariantRow() {
+    setVariants([...variants, { option_value: "", stock: 0 }]);
   }
 
-  function toggleSize(size: string) {
-    const exists = sizes.find((s) => s.size === size);
-    if (exists) {
-      setSizes(sizes.filter((s) => s.size !== size));
-    } else {
-      setSizes([...sizes, { size, stock: 0 }].sort(
-        (a, b) => ALL_SIZES.indexOf(a.size) - ALL_SIZES.indexOf(b.size)
-      ));
-    }
+  function removeVariantRow(idx: number) {
+    setVariants(variants.filter((_, i) => i !== idx));
+  }
+
+  function updateVariant(idx: number, field: keyof VariantRow, value: string | number) {
+    const updated = [...variants];
+    updated[idx] = { ...updated[idx], [field]: value };
+    setVariants(updated);
   }
 
   function handleImageChange(idx: number, val: string) {
@@ -104,8 +94,9 @@ export default function AdminPage() {
       return;
     }
 
-    if (sizes.length === 0) {
-      alert("Add at least one size!");
+    const validVariants = variants.filter((v) => v.option_value.trim() !== "");
+    if (validVariants.length === 0) {
+      alert(`Add at least one ${optionLabel} option!`);
       return;
     }
 
@@ -123,6 +114,7 @@ export default function AdminPage() {
           image_url: form.image_url,
           category_id: form.category_id,
           is_featured: form.is_featured,
+          is_commission: form.is_commission,
         })
         .select()
         .single();
@@ -136,10 +128,11 @@ export default function AdminPage() {
       const { error: variantError } = await supabase
         .from("variants")
         .insert(
-          sizes.map((s) => ({
+          validVariants.map((v) => ({
             product_id: product.id,
-            size: s.size,
-            stock: s.stock,
+            option_label: optionLabel,
+            option_value: v.option_value,
+            stock: v.stock,
           }))
         );
 
@@ -179,14 +172,10 @@ export default function AdminPage() {
         image_url: "",
         category_id: "",
         is_featured: false,
+        is_commission: false,
       });
-      setSizes([
-        { size: "XS", stock: 0 },
-        { size: "S", stock: 0 },
-        { size: "M", stock: 0 },
-        { size: "L", stock: 0 },
-        { size: "XL", stock: 0 },
-      ]);
+      setOptionLabel("Color");
+      setVariants([{ option_value: "", stock: 0 }]);
       setImages(["", "", ""]);
       setTimeout(() => setSuccess(false), 3000);
 
@@ -203,7 +192,7 @@ export default function AdminPage() {
       <div className="min-h-screen bg-zinc-950 text-white flex items-center justify-center px-4">
         <div className="w-full max-w-sm space-y-6">
           <div className="text-center">
-            <h1 className="font-bold tracking-[0.4em] text-sm uppercase mb-2">EXILES</h1>
+            <h1 className="font-bold tracking-[0.4em] text-sm uppercase mb-2">LOISTECH</h1>
             <p className="text-zinc-600 text-xs tracking-widest uppercase">Admin Access</p>
           </div>
           <div className="space-y-3">
@@ -233,27 +222,34 @@ export default function AdminPage() {
       {/* NAV */}
       <nav className="sticky top-0 z-50 bg-zinc-950/80 backdrop-blur-xl border-b border-zinc-800/60">
         <div className="max-w-4xl mx-auto px-4 sm:px-8 py-4 flex items-center justify-between">
-          <h1 className="font-bold tracking-[0.4em] text-sm uppercase">EXILES Admin</h1>
-          <button
-            onClick={() => router.push("/")}
-            className="text-xs tracking-widest uppercase text-zinc-500 hover:text-white transition-colors"
-          >
-            View Shop
-          </button>
-
-          <button onClick={() => router.push("/Admin/edit")} className="text-xs tracking-widest uppercase text-zinc-500 hover:text-white transition-colors">
-  Edit Products
-</button>
+          <div className="flex items-center gap-6">
+            <h1 className="font-bold tracking-[0.4em] text-sm uppercase">LOISTECH Admin</h1>
+            <span className="text-zinc-700 text-xs">|</span>
+            <span className="text-zinc-400 text-xs tracking-widest uppercase">Add Product</span>
+          </div>
+          <div className="flex items-center gap-4">
+            <button
+              onClick={() => router.push("/admin/edit")}
+              className="text-xs tracking-widest uppercase text-zinc-500 hover:text-white transition-colors"
+            >
+              Edit Products
+            </button>
+            <button
+              onClick={() => router.push("/")}
+              className="text-xs tracking-widest uppercase text-zinc-500 hover:text-white transition-colors"
+            >
+              View Shop
+            </button>
+          </div>
         </div>
       </nav>
 
       <div className="max-w-4xl mx-auto px-4 sm:px-8 py-10 pb-24">
 
-        {/* SUCCESS BANNER */}
         {success && (
           <div className="flex items-center gap-3 bg-green-500/10 border border-green-500/20 text-green-400 px-4 py-3 rounded-xl mb-6 text-sm">
             <CheckCircle size={16} />
-            Product added successfully! It's live on your shop now.
+            Product added successfully! It's live now.
           </div>
         )}
 
@@ -262,7 +258,6 @@ export default function AdminPage() {
           {/* LEFT — BASIC INFO */}
           <div className="space-y-6">
 
-            {/* PRODUCT INFO */}
             <div>
               <p className="text-[10px] tracking-[0.4em] uppercase text-zinc-500 mb-4">
                 Product Info
@@ -287,7 +282,6 @@ export default function AdminPage() {
                 />
 
                 <div className="grid grid-cols-2 gap-3">
-                  {/* PRICE */}
                   <div className="relative">
                     <span className="absolute left-4 top-1/2 -translate-y-1/2 text-zinc-500 text-sm">₦</span>
                     <input
@@ -300,7 +294,6 @@ export default function AdminPage() {
                     />
                   </div>
 
-                  {/* CATEGORY */}
                   <select
                     name="category_id"
                     value={form.category_id}
@@ -318,69 +311,90 @@ export default function AdminPage() {
 
                 {/* FEATURED TOGGLE */}
                 <label className="flex items-center gap-3 px-4 py-3 bg-zinc-900 border border-zinc-800 rounded-xl cursor-pointer hover:border-zinc-700 transition-colors">
-                  <div className={`w-10 h-5 rounded-full transition-colors relative ${form.is_featured ? "bg-white" : "bg-zinc-700"}`}>
+                  <div className={`w-10 h-5 rounded-full transition-colors relative flex-shrink-0 ${form.is_featured ? "bg-white" : "bg-zinc-700"}`}>
                     <div className={`absolute top-0.5 w-4 h-4 bg-zinc-950 rounded-full transition-all ${form.is_featured ? "left-5" : "left-0.5"}`} />
                   </div>
                   <div>
-                    <p className="text-xs text-white">Mark as New Arrival</p>
+                    <p className="text-xs text-white">Mark as Featured</p>
                     <p className="text-[10px] text-zinc-600">Shows "New" badge on product card</p>
                   </div>
-                  <input
-                    type="checkbox"
-                    name="is_featured"
-                    checked={form.is_featured}
-                    onChange={handleFormChange}
-                    className="hidden"
-                  />
+                  <input type="checkbox" name="is_featured" checked={form.is_featured} onChange={handleFormChange} className="hidden" />
+                </label>
+
+                {/* COMMISSION TOGGLE */}
+                <label className="flex items-center gap-3 px-4 py-3 bg-zinc-900 border border-zinc-800 rounded-xl cursor-pointer hover:border-zinc-700 transition-colors">
+                  <div className={`w-10 h-5 rounded-full transition-colors relative flex-shrink-0 ${form.is_commission ? "bg-amber-400" : "bg-zinc-700"}`}>
+                    <div className={`absolute top-0.5 w-4 h-4 bg-zinc-950 rounded-full transition-all ${form.is_commission ? "left-5" : "left-0.5"}`} />
+                  </div>
+                  <div>
+                    <p className="text-xs text-white">Commission / Bespoke Item</p>
+                    <p className="text-[10px] text-zinc-600">Shows "Request Consultation" instead of Add to Cart</p>
+                  </div>
+                  <input type="checkbox" name="is_commission" checked={form.is_commission} onChange={handleFormChange} className="hidden" />
                 </label>
               </div>
             </div>
 
-            {/* SIZES + STOCK */}
+            {/* VARIANTS */}
             <div>
               <p className="text-[10px] tracking-[0.4em] uppercase text-zinc-500 mb-4">
-                Sizes & Stock
+                Product Options
               </p>
 
-              {/* SIZE TOGGLES */}
-              <div className="flex gap-2 flex-wrap mb-4">
-                {ALL_SIZES.map((size) => {
-                  const active = sizes.find((s) => s.size === size);
-                  return (
+              <div className="mb-3">
+                <p className="text-xs text-zinc-400 mb-2">What kind of option is this?</p>
+                <div className="flex gap-2 flex-wrap">
+                  {["Color", "Finish", "Wattage", "Storage", "Model"].map((label) => (
                     <button
-                      key={size}
-                      onClick={() => toggleSize(size)}
-                      className={`w-12 h-12 rounded-xl text-xs font-medium transition-all border ${
-                        active
+                      key={label}
+                      onClick={() => setOptionLabel(label)}
+                      className={`px-4 py-2 rounded-xl text-xs transition-all border ${
+                        optionLabel === label
                           ? "bg-white text-zinc-950 border-white"
                           : "bg-zinc-900 text-zinc-500 border-zinc-800 hover:border-zinc-600"
                       }`}
                     >
-                      {size}
+                      {label}
                     </button>
-                  );
-                })}
+                  ))}
+                </div>
               </div>
 
-              {/* STOCK INPUTS */}
               <div className="space-y-2">
-                {sizes.map((s, idx) => (
-                  <div key={s.size} className="flex items-center gap-3">
-                    <span className="text-xs text-zinc-400 w-8 text-center font-medium">{s.size}</span>
+                {variants.map((v, idx) => (
+                  <div key={idx} className="flex items-center gap-2">
+                    <input
+                      type="text"
+                      placeholder={`${optionLabel} (e.g. Black)`}
+                      value={v.option_value}
+                      onChange={(e) => updateVariant(idx, "option_value", e.target.value)}
+                      className={`${inputClass} flex-1`}
+                    />
                     <input
                       type="number"
                       min={0}
-                      value={s.stock}
-                      onChange={(e) => handleSizeStock(idx, parseInt(e.target.value) || 0)}
-                      className={`${inputClass} flex-1`}
-                      placeholder="Stock quantity"
+                      placeholder="Stock"
+                      value={v.stock}
+                      onChange={(e) => updateVariant(idx, "stock", parseInt(e.target.value) || 0)}
+                      className={`${inputClass} w-24`}
                     />
-                    <span className="text-[10px] text-zinc-600 w-10">
-                      {s.stock === 0 ? "OOS" : "in stock"}
-                    </span>
+                    <button
+                      onClick={() => removeVariantRow(idx)}
+                      className="text-zinc-700 hover:text-red-400 transition-colors flex-shrink-0"
+                    >
+                      <Trash2 size={14} />
+                    </button>
                   </div>
                 ))}
               </div>
+
+              <button
+                onClick={addVariantRow}
+                className="flex items-center gap-1 text-[10px] tracking-widest uppercase text-zinc-500 hover:text-white transition-colors mt-3"
+              >
+                <Plus size={11} />
+                Add Another {optionLabel}
+              </button>
             </div>
 
           </div>
@@ -388,7 +402,6 @@ export default function AdminPage() {
           {/* RIGHT — IMAGES */}
           <div className="space-y-6">
 
-            {/* MAIN IMAGE */}
             <div>
               <p className="text-[10px] tracking-[0.4em] uppercase text-zinc-500 mb-4">
                 Main Image (Shop Grid)
@@ -402,24 +415,21 @@ export default function AdminPage() {
                 className={inputClass}
               />
               {form.image_url && (
-                <div className="mt-3 aspect-[3/4] rounded-xl overflow-hidden bg-zinc-900 border border-zinc-800">
+                <div className="mt-3 aspect-square rounded-xl overflow-hidden bg-zinc-900 border border-zinc-800">
                   <img
                     src={form.image_url}
                     alt="Preview"
                     className="w-full h-full object-cover"
-                    onError={(e) => {
-                      (e.target as HTMLImageElement).style.display = "none";
-                    }}
+                    onError={(e) => { (e.target as HTMLImageElement).style.display = "none"; }}
                   />
                 </div>
               )}
             </div>
 
-            {/* EXTRA IMAGES */}
             <div>
               <div className="flex items-center justify-between mb-4">
                 <p className="text-[10px] tracking-[0.4em] uppercase text-zinc-500">
-                  Gallery Images (Product Page)
+                  Gallery Images
                 </p>
                 <button
                   onClick={addImageSlot}
@@ -447,9 +457,7 @@ export default function AdminPage() {
                             src={url}
                             alt={`Preview ${idx + 1}`}
                             className="w-full h-full object-cover"
-                            onError={(e) => {
-                              (e.target as HTMLImageElement).style.display = "none";
-                            }}
+                            onError={(e) => { (e.target as HTMLImageElement).style.display = "none"; }}
                           />
                         </div>
                       )}
@@ -464,7 +472,6 @@ export default function AdminPage() {
                 ))}
               </div>
 
-              {/* IMGUR TIP */}
               <div className="mt-4 px-4 py-3 bg-zinc-900/60 rounded-xl border border-zinc-800/40">
                 <p className="text-[10px] text-zinc-500 leading-relaxed">
                   💡 Upload photos at <span className="text-zinc-300">imgur.com</span> → right click image → Copy Image Address → paste above
@@ -475,7 +482,6 @@ export default function AdminPage() {
           </div>
         </div>
 
-        {/* SUBMIT */}
         <div className="mt-10 border-t border-zinc-800/60 pt-8">
           <button
             onClick={handleSubmit}

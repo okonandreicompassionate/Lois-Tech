@@ -12,7 +12,7 @@ import { FiArrowLeft } from "react-icons/fi";
 
 type Variant = {
   id: string;
-  size: string;
+  option_value: string;
   stock: number;
 };
 
@@ -56,7 +56,11 @@ export default function ProductPage() {
           image_url,
           price,
           categories ( name ),
-          variants ( id, size, stock ),
+         variants (
+  id,
+  option_value,
+  stock
+),
           product_images ( id, image_url, position )
         `)
         .eq("id", params.id)
@@ -88,7 +92,7 @@ export default function ProductPage() {
       product_id: product.id,
       name: product.name,
       image_url: product.image_url,
-      size: selectedVariant.size,
+      size: selectedVariant.option_value,
       price: product.price,
       quantity: 1,
     });
@@ -298,7 +302,7 @@ export default function ProductPage() {
                 <p className="text-xs tracking-[0.2em] uppercase text-zinc-400">
                   Select Size
                   {selectedVariant && (
-                    <span className="text-white ml-2">— {selectedVariant.size}</span>
+                    <span className="text-white ml-2">—  {selectedVariant.option_value}</span>
                   )}
                 </p>
                 <button className="text-[10px] tracking-widest uppercase text-zinc-600 hover:text-zinc-400 transition-colors underline underline-offset-2">
@@ -322,8 +326,8 @@ export default function ProductPage() {
                           ? "bg-white text-zinc-950 border-2 border-white shadow-lg shadow-white/10"
                           : "bg-zinc-900 text-zinc-300 border border-zinc-700 hover:border-zinc-500 hover:text-white"
                       }`}
-                    >
-                      {variant.size}
+                    >{variant.option_value}
+                      
                       {outOfStock && (
                         <span className="absolute inset-0 flex items-center justify-center">
                           <span className="w-8 h-px bg-zinc-700 rotate-45 absolute" />
