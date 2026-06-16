@@ -406,7 +406,8 @@ export default function LandingPage() {
             to your space and aesthetic. Request a consultation to begin.
           </p>
           <Link
-            href="/#consult"
+          target="_blank"
+            href="http://loistech.com.ng/#consult"
             className="inline-flex items-center justify-center rounded-xl bg-white px-6 py-3 text-sm font-semibold text-slate-900 hover:bg-white/90 transition-colors"
           >
             Request Consultation

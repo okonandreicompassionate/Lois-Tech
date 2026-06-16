@@ -129,7 +129,7 @@ export default function ProductPage() {
       <div className="min-h-screen bg-slate-200 text-slate-900 flex items-center justify-center font-titillium">
         <div className="text-center space-y-4">
           <p className="text-slate-400 text-xs tracking-[0.3em] uppercase">Product not found</p>
-          <Link href="/" className="text-xs tracking-widest uppercase text-slate-600 hover:text-slate-900 transition-colors border border-slate-300 px-6 py-3 rounded-xl inline-block hover:border-slate-400">
+          <Link href="/shop" className="text-xs tracking-widest uppercase text-slate-600 hover:text-slate-900 transition-colors border border-slate-300 px-6 py-3 rounded-xl inline-block hover:border-slate-400">
             Back to Shop
           </Link>
         </div>
@@ -164,7 +164,7 @@ export default function ProductPage() {
             </span>
           </button>
 
-          <Link href="/" className="flex items-center gap-2 flex-1 justify-center">
+          <Link href="/shop" className="flex items-center gap-2 flex-1 justify-center">
             <img src="https://i.imgur.com/IGBf9Dh.png" alt="LoisTech" className="h-7 w-auto" />
             <span className="text-sm font-semibold tracking-tight text-slate-900">LOIS TECH</span>
           </Link>
@@ -185,7 +185,7 @@ export default function ProductPage() {
       {/* BREADCRUMB */}
       <div className="max-w-6xl mx-auto px-4 sm:px-8 pt-24 pb-4">
         <div className="flex items-center gap-2 text-[10px] tracking-widest uppercase text-slate-400">
-          <Link href="/" className="hover:text-slate-600 transition-colors">Shop</Link>
+          <Link href="/shop" className="hover:text-slate-600 transition-colors">Shop</Link>
           <ChevronRight size={10} />
           <span className="text-slate-500">{product.categories?.[0]?.name ?? "Product"}</span>
           <ChevronRight size={10} />
@@ -363,10 +363,10 @@ export default function ProductPage() {
                   }`}
                 >
                   {added
-                    ? "✓ Added to Bag"
+                    ? "✓ Added to Cart"
                     : !selectedVariant
                     ? `Select a ${optionLabel}`
-                    : "Add to Bag"}
+                    : "Add to Cart"}
                 </button>
               </>
             )}
