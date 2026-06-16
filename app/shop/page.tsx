@@ -455,11 +455,11 @@ export default function LandingPage() {
             <div>
               <p className="text-[10px] tracking-[0.3em] uppercase text-slate-500 mb-4">Trust & Policies</p>
               <ul className="space-y-2.5 text-xs text-slate-600">
-                <li><Link href="/policies/returns" className="hover:text-slate-900 transition-colors">Returns & Exchange Policy</Link></li>
-                <li className="text-[10px] text-slate-400 leading-relaxed">(No refund on no damage)</li>
+               
+               
                 <li><Link href="/policies/sop" className="hover:text-slate-900 transition-colors">4-Phase SOP Summary</Link></li>
-                <li><Link href="/policies/privacy" className="hover:text-slate-900 transition-colors">Privacy Policy</Link></li>
-                <li><Link href="/policies/terms" className="hover:text-slate-900 transition-colors">Terms & Conditions</Link></li>
+                <li><Link target="_blank" href="https://loistech.com.ng/privacy.html" className="hover:text-slate-900 transition-colors">Privacy Policy</Link></li>
+                <li><Link target="_blank" href="https://loistech.com.ng/tc.html" className="hover:text-slate-900 transition-colors">Terms & Conditions</Link></li>
               </ul>
             </div>
 

@@ -1,11 +1,11 @@
-import { Inter } from "next/font/google";
+import { Poppins } from "next/font/google";
 import "./globals.css";
 import { CartProvider } from "./components/cartProvider";
 
-const inter = Inter({
+const poppins = Poppins({
   subsets: ["latin"],
   weight: ["300", "400", "500", "600", "700", "800"],
-  variable: "--font-inter",
+  variable: "--font-poppins",
 });
 
 export const metadata = {
@@ -20,9 +20,8 @@ export default function RootLayout({
   children: React.ReactNode;
 }) {
   return (
-    <html lang="en" className={inter.variable} suppressHydrationWarning>
-      <head></head>
-      <body className="font-sans bg-white text-white antialiased">
+    <html lang="en" className={poppins.variable} suppressHydrationWarning>
+      <body className="font-sans bg-white text-black antialiased">
         <CartProvider>{children}</CartProvider>
       </body>
     </html>
