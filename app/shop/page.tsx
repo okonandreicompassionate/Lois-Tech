@@ -160,7 +160,7 @@ export default function LandingPage() {
       Intelligent<br />Living
     </h2>
 
-    <p className="text-[12px] tracking-[0.4em] uppercase text-black-100/80 mt-5">
+    <p className="text-[11px] tracking-[0.4em] uppercase text-white mt-5">
       Smart Automation · Security Systems · Acoustic & Interior Integration
     </p>
   </div>
