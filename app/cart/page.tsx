@@ -113,7 +113,7 @@ console.log("grandTotal", grandTotal);
           </p>
         </div>
         <Link
-          href="/"
+          href="/shop"
           className="bg-slate-900 text-white text-xs tracking-[0.2em] uppercase px-8 py-3.5 rounded-xl font-semibold hover:bg-slate-800 transition-colors"
         >
           Browse Shop
@@ -139,7 +139,7 @@ console.log("grandTotal", grandTotal);
             Back
           </button>
 
-          <Link href="/" className="flex items-center gap-2">
+          <Link href="/shop" className="flex items-center gap-2">
             <img
               src="https://i.imgur.com/IGBf9Dh.png"
               alt="LoisTech"
@@ -451,7 +451,7 @@ console.log("grandTotal", grandTotal);
               </p>
 
               <Link
-                href="/"
+                href="/shop"
                 className="block text-center text-[10px] tracking-[0.2em] uppercase text-slate-400 hover:text-slate-900 transition-colors"
               >
                 ← Continue Shopping
