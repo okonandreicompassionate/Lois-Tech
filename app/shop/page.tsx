@@ -129,7 +129,7 @@ export default function LandingPage() {
 
           {/* CART */}
           <Link href="/cart" className="relative flex items-center gap-2 text-slate-700 hover:text-slate-900 transition-colors">
-            <ShoppingCart size={18} strokeWidth={1.5} />
+            <ShoppingCart size={25} strokeWidth={1.5} />
             {cartItems.length > 0 && (
               <span className="absolute -top-2 -right-2 w-4 h-4 bg-slate-900 text-white text-[10px] rounded-full flex items-center justify-center font-bold">
                 {cartItems.length}
@@ -142,26 +142,31 @@ export default function LandingPage() {
       {/* HERO */}
       <div className="relative w-full h-[70vh] sm:h-screen overflow-hidden">
         <img
-          src="https://i.imgur.com/f3iTliD.jpeg"
+          src="https://i.imgur.com/uPgwKby.jpeg"
           alt="Hero"
-          className="w-full h-full object-cover"
+          className="w-full h-full object-cover grayscale brightness-75 contrast-90"
         />
         <div className="absolute inset-0 bg-gradient-to-b from-black/25 via-black/10 to-slate-200" />
 
-        <div className="absolute bottom-24 left-4 sm:left-8 lg:left-16">
-          <p className="text-[10px] tracking-[0.5em] uppercase text-white/70 mb-4">
-            The Architecture of
-          </p>
-          <h2 className="text-4xl sm:text-6xl lg:text-7xl font-semibold leading-none tracking-tight text-white">
-            Intelligent<br />Living
-          </h2>
-          <p className="text-[10px] tracking-[0.4em] uppercase text-white/70 mt-5">
-            Privacy-First · Build-Integrated · Precision Delivered
-          </p>
-        </div>
+      {/* gradient overlay */}
+  <div className="absolute inset-0 bg-gradient-to-t from-slate-200/50 via-black/30 to-transparent" />
+
+  <div className="absolute bottom-40 left-4 sm:left-8 lg:left-16">
+    <p className="text-[12px] tracking-[0.5em] uppercase text-slate-200/80 mb-4">
+      The Future of
+    </p>
+
+    <h2 className="text-4xl sm:text-6xl lg:text-7xl font-semibold leading-none tracking-tight text-white drop-shadow-lg">
+      Intelligent<br />Living
+    </h2>
+
+    <p className="text-[12px] tracking-[0.4em] uppercase text-black-100/80 mt-5">
+      Smart Automation · Security Systems · Acoustic & Interior Integration
+    </p>
+  </div>
 
         <div className="absolute bottom-10 left-1/2 -translate-x-1/2 flex flex-col items-center gap-2">
-          <div className="w-7 h-7 rounded-full border border-white/40 flex items-center justify-center animate-bounce">
+          <div className="w-7 h-7 rounded-full border border-gray-50/40 flex items-center justify-center animate-bounce">
             <ChevronDown size={12} className="text-white" />
           </div>
         </div>

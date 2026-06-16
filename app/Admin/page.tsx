@@ -10,7 +10,7 @@ const ADMIN_PASSWORD = process.env.NEXT_PUBLIC_ADMIN_PASSWORD ?? "";
 type Category = { id: string; name: string; slug: string };
 type VariantRow = { option_value: string; stock: number };
 
-const inputClass = "w-full bg-zinc-900 border border-zinc-800 text-white text-sm px-4 py-3 rounded-xl outline-none focus:border-zinc-600 transition-colors placeholder-zinc-600";
+const inputClass = "w-full bg-white border border-slate-300 text-slate-900 text-sm px-4 py-3 rounded-xl outline-none focus:border-slate-500 focus:ring-1 focus:ring-slate-200 transition-colors placeholder-slate-400";
 
 export default function AdminPage() {
   const router = useRouter();
@@ -31,10 +31,12 @@ export default function AdminPage() {
     is_commission: false,
   });
 
+  const [hasVariants, setHasVariants] = useState(false);
   const [optionLabel, setOptionLabel] = useState("Color");
   const [variants, setVariants] = useState<VariantRow[]>([
     { option_value: "", stock: 0 },
   ]);
+  const [singleStock, setSingleStock] = useState(0);
 
   const [images, setImages] = useState<string[]>(["", "", ""]);
 
@@ -94,10 +96,27 @@ export default function AdminPage() {
       return;
     }
 
-    const validVariants = variants.filter((v) => v.option_value.trim() !== "");
-    if (validVariants.length === 0) {
-      alert(`Add at least one ${optionLabel} option!`);
-      return;
+    let variantsToInsert: { option_label: string; option_value: string; stock: number }[] = [];
+
+    if (hasVariants) {
+      if (!optionLabel.trim()) {
+        alert("Give your option a name (e.g. Color, Wattage)!");
+        return;
+      }
+      const validVariants = variants.filter((v) => v.option_value.trim() !== "");
+      if (validVariants.length === 0) {
+        alert(`Add at least one ${optionLabel} value!`);
+        return;
+      }
+      variantsToInsert = validVariants.map((v) => ({
+        option_label: optionLabel.trim(),
+        option_value: v.option_value.trim(),
+        stock: v.stock,
+      }));
+    } else {
+      variantsToInsert = [
+        { option_label: "Stock", option_value: "Standard", stock: singleStock },
+      ];
     }
 
     setLoading(true);
@@ -128,11 +147,9 @@ export default function AdminPage() {
       const { error: variantError } = await supabase
         .from("variants")
         .insert(
-          validVariants.map((v) => ({
+          variantsToInsert.map((v) => ({
             product_id: product.id,
-            option_label: optionLabel,
-            option_value: v.option_value,
-            stock: v.stock,
+            ...v,
           }))
         );
 
@@ -174,8 +191,10 @@ export default function AdminPage() {
         is_featured: false,
         is_commission: false,
       });
+      setHasVariants(false);
       setOptionLabel("Color");
       setVariants([{ option_value: "", stock: 0 }]);
+      setSingleStock(0);
       setImages(["", "", ""]);
       setTimeout(() => setSuccess(false), 3000);
 
@@ -189,11 +208,11 @@ export default function AdminPage() {
 
   if (!authed) {
     return (
-      <div className="min-h-screen bg-zinc-950 text-white flex items-center justify-center px-4">
+      <div className="min-h-screen bg-slate-200 text-slate-900 flex items-center justify-center px-4 font-titillium">
         <div className="w-full max-w-sm space-y-6">
           <div className="text-center">
-            <h1 className="font-bold tracking-[0.4em] text-sm uppercase mb-2">LOISTECH</h1>
-            <p className="text-zinc-600 text-xs tracking-widest uppercase">Admin Access</p>
+            <h1 className="font-semibold tracking-[0.3em] text-sm uppercase mb-2">LOIS TECH</h1>
+            <p className="text-slate-500 text-xs tracking-widest uppercase">Admin Access</p>
           </div>
           <div className="space-y-3">
             <input
@@ -206,7 +225,7 @@ export default function AdminPage() {
             />
             <button
               onClick={handleLogin}
-              className="w-full py-3.5 bg-white text-zinc-950 text-xs tracking-[0.25em] uppercase font-semibold rounded-xl hover:bg-zinc-100 transition-colors"
+              className="w-full py-3.5 bg-slate-900 text-white text-xs tracking-[0.25em] uppercase font-semibold rounded-xl hover:bg-slate-800 transition-colors"
             >
               Enter
             </button>
@@ -217,27 +236,20 @@ export default function AdminPage() {
   }
 
   return (
-    <div className="min-h-screen bg-zinc-950 text-white">
+    <div className="min-h-screen bg-slate-200 text-slate-900 font-titillium">
 
-      {/* NAV */}
-      <nav className="sticky top-0 z-50 bg-zinc-950/80 backdrop-blur-xl border-b border-zinc-800/60">
+      <nav className="sticky top-0 z-50 bg-slate-200/80 backdrop-blur-xl border-b border-slate-300/60">
         <div className="max-w-4xl mx-auto px-4 sm:px-8 py-4 flex items-center justify-between">
           <div className="flex items-center gap-6">
-            <h1 className="font-bold tracking-[0.4em] text-sm uppercase">LOISTECH Admin</h1>
-            <span className="text-zinc-700 text-xs">|</span>
-            <span className="text-zinc-400 text-xs tracking-widest uppercase">Add Product</span>
+            <h1 className="font-semibold tracking-[0.3em] text-sm uppercase">LOIS TECH Admin</h1>
+            <span className="text-slate-400 text-xs">|</span>
+            <span className="text-slate-500 text-xs tracking-widest uppercase">Add Product</span>
           </div>
           <div className="flex items-center gap-4">
-            <button
-              onClick={() => router.push("/admin/edit")}
-              className="text-xs tracking-widest uppercase text-zinc-500 hover:text-white transition-colors"
-            >
+            <button onClick={() => router.push("/admin/edit")} className="text-xs tracking-widest uppercase text-slate-500 hover:text-slate-900 transition-colors">
               Edit Products
             </button>
-            <button
-              onClick={() => router.push("/")}
-              className="text-xs tracking-widest uppercase text-zinc-500 hover:text-white transition-colors"
-            >
+            <button onClick={() => router.push("/")} className="text-xs tracking-widest uppercase text-slate-500 hover:text-slate-900 transition-colors">
               View Shop
             </button>
           </div>
@@ -247,7 +259,7 @@ export default function AdminPage() {
       <div className="max-w-4xl mx-auto px-4 sm:px-8 py-10 pb-24">
 
         {success && (
-          <div className="flex items-center gap-3 bg-green-500/10 border border-green-500/20 text-green-400 px-4 py-3 rounded-xl mb-6 text-sm">
+          <div className="flex items-center gap-3 bg-green-50 border border-green-200 text-green-700 px-4 py-3 rounded-xl mb-6 text-sm">
             <CheckCircle size={16} />
             Product added successfully! It's live now.
           </div>
@@ -258,8 +270,8 @@ export default function AdminPage() {
           {/* LEFT — BASIC INFO */}
           <div className="space-y-6">
 
-            <div>
-              <p className="text-[10px] tracking-[0.4em] uppercase text-zinc-500 mb-4">
+            <div className="bg-white border border-slate-200 rounded-2xl p-5">
+              <p className="text-[10px] tracking-[0.4em] uppercase text-slate-400 mb-4">
                 Product Info
               </p>
               <div className="space-y-3">
@@ -283,7 +295,7 @@ export default function AdminPage() {
 
                 <div className="grid grid-cols-2 gap-3">
                   <div className="relative">
-                    <span className="absolute left-4 top-1/2 -translate-y-1/2 text-zinc-500 text-sm">₦</span>
+                    <span className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-400 text-sm">₦</span>
                     <input
                       type="number"
                       name="price"
@@ -309,92 +321,158 @@ export default function AdminPage() {
                   </select>
                 </div>
 
-                {/* FEATURED TOGGLE */}
-                <label className="flex items-center gap-3 px-4 py-3 bg-zinc-900 border border-zinc-800 rounded-xl cursor-pointer hover:border-zinc-700 transition-colors">
-                  <div className={`w-10 h-5 rounded-full transition-colors relative flex-shrink-0 ${form.is_featured ? "bg-white" : "bg-zinc-700"}`}>
-                    <div className={`absolute top-0.5 w-4 h-4 bg-zinc-950 rounded-full transition-all ${form.is_featured ? "left-5" : "left-0.5"}`} />
+                <label className="flex items-center gap-3 px-4 py-3 bg-slate-50 border border-slate-200 rounded-xl cursor-pointer hover:border-slate-300 transition-colors">
+                  <div className={`w-10 h-5 rounded-full transition-colors relative flex-shrink-0 ${form.is_featured ? "bg-slate-900" : "bg-slate-300"}`}>
+                    <div className={`absolute top-0.5 w-4 h-4 bg-white rounded-full transition-all shadow ${form.is_featured ? "left-5" : "left-0.5"}`} />
                   </div>
                   <div>
-                    <p className="text-xs text-white">Mark as Featured</p>
-                    <p className="text-[10px] text-zinc-600">Shows "New" badge on product card</p>
+                    <p className="text-xs text-slate-900">Mark as Featured</p>
+                    <p className="text-[10px] text-slate-500">Shows "Featured" badge on product card</p>
                   </div>
                   <input type="checkbox" name="is_featured" checked={form.is_featured} onChange={handleFormChange} className="hidden" />
                 </label>
 
-                {/* COMMISSION TOGGLE */}
-                <label className="flex items-center gap-3 px-4 py-3 bg-zinc-900 border border-zinc-800 rounded-xl cursor-pointer hover:border-zinc-700 transition-colors">
-                  <div className={`w-10 h-5 rounded-full transition-colors relative flex-shrink-0 ${form.is_commission ? "bg-amber-400" : "bg-zinc-700"}`}>
-                    <div className={`absolute top-0.5 w-4 h-4 bg-zinc-950 rounded-full transition-all ${form.is_commission ? "left-5" : "left-0.5"}`} />
+                <label className="flex items-center gap-3 px-4 py-3 bg-amber-50 border border-amber-200 rounded-xl cursor-pointer hover:border-amber-300 transition-colors">
+                  <div className={`w-10 h-5 rounded-full transition-colors relative flex-shrink-0 ${form.is_commission ? "bg-amber-500" : "bg-slate-300"}`}>
+                    <div className={`absolute top-0.5 w-4 h-4 bg-white rounded-full transition-all shadow ${form.is_commission ? "left-5" : "left-0.5"}`} />
                   </div>
                   <div>
-                    <p className="text-xs text-white">Commission / Bespoke Item</p>
-                    <p className="text-[10px] text-zinc-600">Shows "Request Consultation" instead of Add to Cart</p>
+                    <p className="text-xs text-slate-900">Commission / Bespoke Item</p>
+                    <p className="text-[10px] text-amber-700">Shows "Request Consultation" instead of Add to Cart</p>
                   </div>
                   <input type="checkbox" name="is_commission" checked={form.is_commission} onChange={handleFormChange} className="hidden" />
                 </label>
               </div>
             </div>
 
-            {/* VARIANTS */}
-            <div>
-              <p className="text-[10px] tracking-[0.4em] uppercase text-zinc-500 mb-4">
-                Product Options
+            {/* STOCK & OPTIONS */}
+            <div className="bg-white border border-slate-200 rounded-2xl p-5">
+              <p className="text-[10px] tracking-[0.4em] uppercase text-slate-400 mb-4">
+                Stock & Options
               </p>
 
-              <div className="mb-3">
-                <p className="text-xs text-zinc-400 mb-2">What kind of option is this?</p>
-                <div className="flex gap-2 flex-wrap">
-                  {["Color", "Finish", "Wattage", "Storage", "Model"].map((label) => (
-                    <button
-                      key={label}
-                      onClick={() => setOptionLabel(label)}
-                      className={`px-4 py-2 rounded-xl text-xs transition-all border ${
-                        optionLabel === label
-                          ? "bg-white text-zinc-950 border-white"
-                          : "bg-zinc-900 text-zinc-500 border-zinc-800 hover:border-zinc-600"
-                      }`}
-                    >
-                      {label}
-                    </button>
-                  ))}
-                </div>
+              {/* TOGGLE */}
+              <div className="flex gap-2 mb-4">
+                <button
+                  type="button"
+                  onClick={() => setHasVariants(false)}
+                  className={`flex-1 px-4 py-3 rounded-xl text-xs font-medium transition-all border text-left ${
+                    !hasVariants
+                      ? "bg-slate-900 text-white border-slate-900"
+                      : "bg-white text-slate-600 border-slate-300 hover:border-slate-400"
+                  }`}
+                >
+                  <span className="block">Single Item</span>
+                  <span className={`block text-[10px] mt-0.5 ${!hasVariants ? "text-white/60" : "text-slate-400"}`}>
+                    Just one version — set total stock
+                  </span>
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setHasVariants(true)}
+                  className={`flex-1 px-4 py-3 rounded-xl text-xs font-medium transition-all border text-left ${
+                    hasVariants
+                      ? "bg-slate-900 text-white border-slate-900"
+                      : "bg-white text-slate-600 border-slate-300 hover:border-slate-400"
+                  }`}
+                >
+                  <span className="block">Has Options</span>
+                  <span className={`block text-[10px] mt-0.5 ${hasVariants ? "text-white/60" : "text-slate-400"}`}>
+                    e.g. different colors, wattages
+                  </span>
+                </button>
               </div>
 
-              <div className="space-y-2">
-                {variants.map((v, idx) => (
-                  <div key={idx} className="flex items-center gap-2">
+              {/* SINGLE ITEM */}
+              {!hasVariants && (
+                <div>
+                  <label className="text-xs text-slate-500 mb-2 block">Total stock available</label>
+                  <input
+                    type="number"
+                    min={0}
+                    placeholder="e.g. 10"
+                    value={singleStock}
+                    onChange={(e) => setSingleStock(parseInt(e.target.value) || 0)}
+                    className={inputClass}
+                  />
+                  <p className="text-[10px] text-slate-400 mt-2">
+                    Customers will see a simple "Add to Cart" button — no options to pick.
+                  </p>
+                </div>
+              )}
+
+              {/* HAS OPTIONS */}
+              {hasVariants && (
+                <>
+                  <div className="mb-3">
+                    <label className="text-xs text-slate-500 mb-2 block">
+                      What's this option called?
+                    </label>
                     <input
                       type="text"
-                      placeholder={`${optionLabel} (e.g. Black)`}
-                      value={v.option_value}
-                      onChange={(e) => updateVariant(idx, "option_value", e.target.value)}
-                      className={`${inputClass} flex-1`}
+                      placeholder="e.g. Color, Wattage, Model"
+                      value={optionLabel}
+                      onChange={(e) => setOptionLabel(e.target.value)}
+                      className={inputClass}
                     />
-                    <input
-                      type="number"
-                      min={0}
-                      placeholder="Stock"
-                      value={v.stock}
-                      onChange={(e) => updateVariant(idx, "stock", parseInt(e.target.value) || 0)}
-                      className={`${inputClass} w-24`}
-                    />
-                    <button
-                      onClick={() => removeVariantRow(idx)}
-                      className="text-zinc-700 hover:text-red-400 transition-colors flex-shrink-0"
-                    >
-                      <Trash2 size={14} />
-                    </button>
+                    <div className="flex gap-2 flex-wrap mt-2">
+                      {["Color", "Finish", "Wattage", "Storage", "Model"].map((label) => (
+                        <button
+                          key={label}
+                          type="button"
+                          onClick={() => setOptionLabel(label)}
+                          className="px-3 py-1.5 rounded-lg text-[11px] bg-slate-50 text-slate-500 border border-slate-200 hover:border-slate-400 hover:text-slate-900 transition-colors"
+                        >
+                          {label}
+                        </button>
+                      ))}
+                    </div>
+                    {optionLabel && (
+                      <p className="text-[10px] text-slate-400 mt-2">
+                        Customers will see: <span className="text-slate-600">"Select {optionLabel}"</span>
+                      </p>
+                    )}
                   </div>
-                ))}
-              </div>
 
-              <button
-                onClick={addVariantRow}
-                className="flex items-center gap-1 text-[10px] tracking-widest uppercase text-zinc-500 hover:text-white transition-colors mt-3"
-              >
-                <Plus size={11} />
-                Add Another {optionLabel}
-              </button>
+                  <div className="space-y-2">
+                    {variants.map((v, idx) => (
+                      <div key={idx} className="flex items-center gap-2">
+                        <input
+                          type="text"
+                          placeholder={`${optionLabel || "Option"} value (e.g. Black)`}
+                          value={v.option_value}
+                          onChange={(e) => updateVariant(idx, "option_value", e.target.value)}
+                          className={`${inputClass} flex-1`}
+                        />
+                        <input
+                          type="number"
+                          min={0}
+                          placeholder="Stock"
+                          value={v.stock}
+                          onChange={(e) => updateVariant(idx, "stock", parseInt(e.target.value) || 0)}
+                          className={`${inputClass} w-24`}
+                        />
+                        <button
+                          type="button"
+                          onClick={() => removeVariantRow(idx)}
+                          className="text-slate-400 hover:text-red-500 transition-colors flex-shrink-0"
+                        >
+                          <Trash2 size={14} />
+                        </button>
+                      </div>
+                    ))}
+                  </div>
+
+                  <button
+                    type="button"
+                    onClick={addVariantRow}
+                    className="flex items-center gap-1 text-[10px] tracking-widest uppercase text-slate-500 hover:text-slate-900 transition-colors mt-3"
+                  >
+                    <Plus size={11} />
+                    Add Another {optionLabel || "Value"}
+                  </button>
+                </>
+              )}
             </div>
 
           </div>
@@ -402,8 +480,8 @@ export default function AdminPage() {
           {/* RIGHT — IMAGES */}
           <div className="space-y-6">
 
-            <div>
-              <p className="text-[10px] tracking-[0.4em] uppercase text-zinc-500 mb-4">
+            <div className="bg-white border border-slate-200 rounded-2xl p-5">
+              <p className="text-[10px] tracking-[0.4em] uppercase text-slate-400 mb-4">
                 Main Image (Shop Grid)
               </p>
               <input
@@ -415,7 +493,7 @@ export default function AdminPage() {
                 className={inputClass}
               />
               {form.image_url && (
-                <div className="mt-3 aspect-square rounded-xl overflow-hidden bg-zinc-900 border border-zinc-800">
+                <div className="mt-3 aspect-square rounded-xl overflow-hidden bg-slate-100 border border-slate-200">
                   <img
                     src={form.image_url}
                     alt="Preview"
@@ -426,14 +504,15 @@ export default function AdminPage() {
               )}
             </div>
 
-            <div>
+            <div className="bg-white border border-slate-200 rounded-2xl p-5">
               <div className="flex items-center justify-between mb-4">
-                <p className="text-[10px] tracking-[0.4em] uppercase text-zinc-500">
+                <p className="text-[10px] tracking-[0.4em] uppercase text-slate-400">
                   Gallery Images
                 </p>
                 <button
+                  type="button"
                   onClick={addImageSlot}
-                  className="flex items-center gap-1 text-[10px] tracking-widest uppercase text-zinc-500 hover:text-white transition-colors"
+                  className="flex items-center gap-1 text-[10px] tracking-widest uppercase text-slate-500 hover:text-slate-900 transition-colors"
                 >
                   <Plus size={11} />
                   Add
@@ -452,7 +531,7 @@ export default function AdminPage() {
                         className={inputClass}
                       />
                       {url && (
-                        <div className="h-24 rounded-xl overflow-hidden bg-zinc-900 border border-zinc-800">
+                        <div className="h-24 rounded-xl overflow-hidden bg-slate-100 border border-slate-200">
                           <img
                             src={url}
                             alt={`Preview ${idx + 1}`}
@@ -463,8 +542,9 @@ export default function AdminPage() {
                       )}
                     </div>
                     <button
+                      type="button"
                       onClick={() => removeImageSlot(idx)}
-                      className="mt-3 text-zinc-700 hover:text-red-400 transition-colors"
+                      className="mt-3 text-slate-400 hover:text-red-500 transition-colors"
                     >
                       <Trash2 size={14} />
                     </button>
@@ -472,9 +552,9 @@ export default function AdminPage() {
                 ))}
               </div>
 
-              <div className="mt-4 px-4 py-3 bg-zinc-900/60 rounded-xl border border-zinc-800/40">
-                <p className="text-[10px] text-zinc-500 leading-relaxed">
-                  💡 Upload photos at <span className="text-zinc-300">imgur.com</span> → right click image → Copy Image Address → paste above
+              <div className="mt-4 px-4 py-3 bg-slate-50 rounded-xl border border-slate-200">
+                <p className="text-[10px] text-slate-500 leading-relaxed">
+                  💡 Upload photos at <span className="text-slate-700">imgur.com</span> → right click image → Copy Image Address → paste above
                 </p>
               </div>
             </div>
@@ -482,19 +562,19 @@ export default function AdminPage() {
           </div>
         </div>
 
-        <div className="mt-10 border-t border-zinc-800/60 pt-8">
+        <div className="mt-10 border-t border-slate-300/60 pt-8">
           <button
             onClick={handleSubmit}
             disabled={loading}
             className={`w-full py-4 text-xs tracking-[0.3em] uppercase font-semibold rounded-xl transition-all duration-300 ${
               loading
-                ? "bg-zinc-800 text-zinc-500 cursor-not-allowed"
-                : "bg-white text-zinc-950 hover:bg-zinc-100 shadow-lg shadow-white/5"
+                ? "bg-slate-300 text-slate-500 cursor-not-allowed"
+                : "bg-slate-900 text-white hover:bg-slate-800 shadow-lg shadow-slate-900/10"
             }`}
           >
             {loading ? "Adding Product..." : "Add Product to Shop"}
           </button>
-          <p className="text-zinc-700 text-[10px] tracking-wide text-center mt-3">
+          <p className="text-slate-400 text-[10px] tracking-wide text-center mt-3">
             Product goes live instantly after adding
           </p>
         </div>

@@ -31,14 +31,16 @@ function getDeliveryFee(state: string): number {
 
 function getDeliveryLabel(state: string): string {
   if (!state) return "";
-  if (EXPRESS_STATES.includes(state)) return `Express Delivery — ₦${DELIVERY_PRICES[state].toLocaleString()}`;
+  if (EXPRESS_STATES.includes(state))
+    return `Express Delivery — ₦${DELIVERY_PRICES[state].toLocaleString()}`;
   return `Standard Delivery (5–7 days) — ₦${DELIVERY_PRICES.other.toLocaleString()}`;
 }
 
-const inputClass = "w-full bg-zinc-900/60 border border-zinc-800 text-white text-sm px-4 py-3.5 rounded-xl outline-none focus:border-zinc-600 transition-colors placeholder-zinc-600";
+const inputClass =
+  "w-full bg-white border border-slate-300 text-slate-900 text-sm px-4 py-3.5 rounded-xl outline-none focus:border-slate-500 transition-colors placeholder-slate-400";
 
 export default function CartPage() {
-  const { cartItems, removeFromCart, updateQuantity } = useCart();
+  const { cartItems, removeFromCart, updateQuantity, cartTotal } = useCart();
   const [loading, setLoading] = useState(false);
   const [step, setStep] = useState<"bag" | "delivery">("bag");
   const [form, setForm] = useState({
@@ -51,95 +53,128 @@ export default function CartPage() {
     state: "",
   });
 
-  const orderTotal = cartItems.reduce(
-    (acc, item) => acc + item.price * item.quantity,
-    0
-  );
-
   const deliveryFee = getDeliveryFee(form.state);
-  const grandTotal = orderTotal + deliveryFee * 100;
+  const grandTotal = cartTotal + deliveryFee * 100;
 
-  const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement>) => {
+  console.log("cartItems", cartItems);
+console.log("cartTotal", cartTotal);
+console.log("deliveryFee", deliveryFee);
+console.log("grandTotal", grandTotal);
+
+  const handleChange = (
+    e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement>
+  ) => {
     setForm({ ...form, [e.target.name]: e.target.value });
   };
 
   const handleCheckout = async () => {
-  if (!form.email || !form.name || !form.phone || !form.address || !form.state) {
-    alert("Please fill in all required fields!");
-    return;
-  }
+    if (
+      !form.email ||
+      !form.name ||
+      !form.phone ||
+      !form.address ||
+      !form.state
+    ) {
+      alert("Please fill in all required fields!");
+      return;
+    }
 
-  setLoading(true);
+    setLoading(true);
 
-  const orderData = {
-    form,
-    cartItems,
-    subtotal: orderTotal,
-    deliveryFee,
-    total: grandTotal,
+    try {
+      localStorage.setItem(
+        "pendingOrder",
+        JSON.stringify({
+          form,
+          cartItems,
+          subtotal: cartTotal,
+          deliveryFee,
+          total: grandTotal,
+        })
+      );
+      window.location.href = "/pay";
+    } catch {
+      alert("Something went wrong. Please try again!");
+      setLoading(false);
+    }
   };
 
-  localStorage.setItem(
-    "pendingOrder",
-    JSON.stringify(orderData)
-  );
-
-  window.location.href = "/pay";
-};
-
+  // ── EMPTY STATE ────────────────────────────────────────────────────────────
   if (cartItems.length === 0) {
     return (
-      <div className="min-h-screen bg-zinc-950 text-white flex flex-col items-center justify-center gap-6 px-4">
-        <div className="w-16 h-16 rounded-2xl bg-zinc-900 border border-zinc-800 flex items-center justify-center">
-          <ShoppingBag size={24} strokeWidth={1.5} className="text-zinc-600" />
+      <div className="min-h-screen bg-slate-200 text-slate-900 flex flex-col items-center justify-center gap-6 px-4 font-titillium">
+        <div className="w-16 h-16 rounded-2xl bg-white border border-slate-200 flex items-center justify-center shadow-sm">
+          <ShoppingBag size={24} strokeWidth={1.5} className="text-slate-400" />
         </div>
         <div className="text-center">
-          <p className="text-white font-medium mb-1">Your bag is empty</p>
-          <p className="text-zinc-600 text-xs tracking-wide">Add something to get started</p>
+          <p className="text-slate-900 font-semibold mb-1">Your bag is empty</p>
+          <p className="text-slate-500 text-xs tracking-wide">
+            Add something to get started
+          </p>
         </div>
         <Link
-          href="/shop"
-          className="bg-white text-zinc-950 text-xs tracking-[0.2em] uppercase px-8 py-3.5 rounded-xl font-semibold hover:bg-zinc-100 transition-colors"
+          href="/"
+          className="bg-slate-900 text-white text-xs tracking-[0.2em] uppercase px-8 py-3.5 rounded-xl font-semibold hover:bg-slate-800 transition-colors"
         >
-          Shop Now
+          Browse Shop
         </Link>
       </div>
     );
   }
 
+  // ── MAIN CART ──────────────────────────────────────────────────────────────
   return (
-    <div className="min-h-screen bg-zinc-950 text-white">
+    <div className="min-h-screen bg-slate-200 text-slate-900 font-titillium">
 
       {/* NAV */}
-      <nav className="sticky top-0 z-50 bg-zinc-950/80 backdrop-blur-xl border-b border-zinc-800/60">
+      <nav className="sticky top-0 z-50 bg-slate-200/80 backdrop-blur-xl border-b border-slate-300/60">
         <div className="max-w-5xl mx-auto px-4 sm:px-8 py-4 flex items-center justify-between">
           <button
-            onClick={() => step === "delivery" ? setStep("bag") : window.history.back()}
-            className="flex items-center gap-2 text-zinc-500 hover:text-white transition-colors text-xs tracking-widest uppercase"
+            onClick={() =>
+              step === "delivery" ? setStep("bag") : window.history.back()
+            }
+            className="flex items-center gap-2 text-slate-500 hover:text-slate-900 transition-colors text-xs tracking-widest uppercase"
           >
             <ArrowLeft size={14} strokeWidth={1.5} />
             Back
           </button>
-          <Link href="/shop" className="font-bold tracking-[0.5em] text-sm uppercase">
-            EXILES
+
+          <Link href="/" className="flex items-center gap-2">
+            <img
+              src="https://i.imgur.com/IGBf9Dh.png"
+              alt="LoisTech"
+              className="h-7 w-auto"
+            />
+            <span className="text-sm font-semibold tracking-tight text-slate-900">
+              LOIS TECH
+            </span>
           </Link>
-          <span className="text-zinc-600 text-xs tracking-widest uppercase">
+
+          <span className="text-slate-500 text-xs tracking-widest uppercase">
             {cartItems.length} {cartItems.length === 1 ? "item" : "items"}
           </span>
         </div>
 
-        {/* PROGRESS BAR — mobile friendly */}
-        <div className="flex border-t border-zinc-800/60">
+        {/* PROGRESS TABS */}
+        <div className="flex border-t border-slate-300/60">
           <button
             onClick={() => setStep("bag")}
-            className={`flex-1 py-2.5 text-[10px] tracking-[0.2em] uppercase transition-colors flex items-center justify-center gap-1.5 ${step === "bag" ? "text-white border-b-2 border-white" : "text-zinc-600"}`}
+            className={`flex-1 py-2.5 text-[10px] tracking-[0.2em] uppercase transition-colors flex items-center justify-center gap-1.5 ${
+              step === "bag"
+                ? "text-slate-900 border-b-2 border-slate-900"
+                : "text-slate-400"
+            }`}
           >
             <ShoppingBag size={11} />
             Bag
           </button>
           <button
             onClick={() => setStep("delivery")}
-            className={`flex-1 py-2.5 text-[10px] tracking-[0.2em] uppercase transition-colors flex items-center justify-center gap-1.5 ${step === "delivery" ? "text-white border-b-2 border-white" : "text-zinc-600"}`}
+            className={`flex-1 py-2.5 text-[10px] tracking-[0.2em] uppercase transition-colors flex items-center justify-center gap-1.5 ${
+              step === "delivery"
+                ? "text-slate-900 border-b-2 border-slate-900"
+                : "text-slate-400"
+            }`}
           >
             <Truck size={11} />
             Delivery
@@ -156,17 +191,17 @@ export default function CartPage() {
             {/* STEP 1 — BAG */}
             {step === "bag" && (
               <div>
-                <p className="text-[10px] tracking-[0.4em] uppercase text-zinc-500 mb-5">
+                <p className="text-[10px] tracking-[0.4em] uppercase text-slate-400 mb-5">
                   Your Bag
                 </p>
                 <div className="space-y-3">
                   {cartItems.map((item) => (
                     <div
                       key={`${item.id}-${item.size}`}
-                      className="flex gap-4 p-4 bg-zinc-900/60 rounded-2xl border border-zinc-800/40"
+                      className="flex gap-4 p-4 bg-white rounded-2xl border border-slate-200 shadow-sm"
                     >
                       {/* THUMBNAIL */}
-                      <div className="w-20 h-24 sm:w-24 sm:h-28 bg-zinc-800 rounded-xl flex-shrink-0 overflow-hidden">
+                      <div className="w-20 h-24 sm:w-24 sm:h-28 bg-slate-100 rounded-xl flex-shrink-0 overflow-hidden border border-slate-200">
                         {item.image_url ? (
                           <img
                             src={item.image_url}
@@ -174,7 +209,7 @@ export default function CartPage() {
                             className="w-full h-full object-cover"
                           />
                         ) : (
-                          <div className="w-full h-full bg-zinc-800" />
+                          <div className="w-full h-full bg-slate-100" />
                         )}
                       </div>
 
@@ -182,37 +217,39 @@ export default function CartPage() {
                       <div className="flex-1 flex flex-col justify-between min-w-0">
                         <div className="flex justify-between items-start gap-2">
                           <div className="min-w-0">
-                            <h2 className="text-sm font-medium text-white truncate">
+                            <h2 className="text-sm font-semibold text-slate-900 truncate">
                               {item.name}
                             </h2>
-                            <p className="text-zinc-500 text-xs mt-0.5">
-                              Size {item.size}
+                            <p className="text-slate-500 text-xs mt-0.5">
+                              {item.size}
                             </p>
                           </div>
-                          <span className="text-sm font-semibold text-white flex-shrink-0">
+                          <span className="text-sm font-semibold text-slate-900 flex-shrink-0">
                             ₦{((item.price * item.quantity) / 100).toLocaleString()}
                           </span>
                         </div>
 
                         <div className="flex items-center justify-between mt-3">
                           {/* QTY CONTROL */}
-                          <div className="flex items-center bg-zinc-800/60 rounded-xl overflow-hidden">
+                          <div className="flex items-center bg-slate-100 rounded-xl overflow-hidden border border-slate-200">
                             <button
                               onClick={() =>
                                 item.quantity > 1
                                   ? updateQuantity(item.id, item.size, item.quantity - 1)
                                   : removeFromCart(item.id, item.size)
                               }
-                              className="w-9 h-9 flex items-center justify-center text-zinc-400 hover:text-white hover:bg-zinc-700 transition-colors text-lg leading-none"
+                              className="w-9 h-9 flex items-center justify-center text-slate-500 hover:text-slate-900 hover:bg-slate-200 transition-colors text-lg leading-none"
                             >
                               −
                             </button>
-                            <span className="w-8 text-center text-sm tabular-nums text-white">
+                            <span className="w-8 text-center text-sm tabular-nums text-slate-900">
                               {item.quantity}
                             </span>
                             <button
-                              onClick={() => updateQuantity(item.id, item.size, item.quantity + 1)}
-                              className="w-9 h-9 flex items-center justify-center text-zinc-400 hover:text-white hover:bg-zinc-700 transition-colors text-lg leading-none"
+                              onClick={() =>
+                                updateQuantity(item.id, item.size, item.quantity + 1)
+                              }
+                              className="w-9 h-9 flex items-center justify-center text-slate-500 hover:text-slate-900 hover:bg-slate-200 transition-colors text-lg leading-none"
                             >
                               +
                             </button>
@@ -220,7 +257,7 @@ export default function CartPage() {
 
                           <button
                             onClick={() => removeFromCart(item.id, item.size)}
-                            className="text-[10px] tracking-widest uppercase text-zinc-600 hover:text-red-400 transition-colors"
+                            className="text-[10px] tracking-widest uppercase text-slate-400 hover:text-red-500 transition-colors"
                           >
                             Remove
                           </button>
@@ -230,10 +267,10 @@ export default function CartPage() {
                   ))}
                 </div>
 
-                {/* CONTINUE TO DELIVERY — mobile step button */}
+                {/* MOBILE — continue to delivery */}
                 <button
                   onClick={() => setStep("delivery")}
-                  className="w-full mt-6 py-4 bg-zinc-800 text-white text-xs tracking-[0.25em] uppercase rounded-xl hover:bg-zinc-700 transition-colors flex items-center justify-center gap-2 lg:hidden"
+                  className="w-full mt-6 py-4 bg-slate-900 text-white text-xs tracking-[0.25em] uppercase rounded-xl hover:bg-slate-800 transition-colors flex items-center justify-center gap-2 lg:hidden"
                 >
                   Continue to Delivery
                   <Truck size={14} strokeWidth={1.5} />
@@ -244,7 +281,7 @@ export default function CartPage() {
             {/* STEP 2 — DELIVERY FORM */}
             {(step === "delivery" || true) && (
               <div className={step === "bag" ? "hidden lg:block" : "block"}>
-                <p className="text-[10px] tracking-[0.4em] uppercase text-zinc-500 mb-5">
+                <p className="text-[10px] tracking-[0.4em] uppercase text-slate-400 mb-5">
                   Delivery Details
                 </p>
                 <div className="space-y-3">
@@ -305,7 +342,6 @@ export default function CartPage() {
                       className={inputClass}
                     />
 
-                    {/* STATE SELECT */}
                     <div className="relative">
                       <select
                         name="state"
@@ -327,15 +363,18 @@ export default function CartPage() {
                           ))}
                         </optgroup>
                       </select>
-                      <ChevronDown size={14} className="absolute right-4 top-1/2 -translate-y-1/2 text-zinc-500 pointer-events-none" />
+                      <ChevronDown
+                        size={14}
+                        className="absolute right-4 top-1/2 -translate-y-1/2 text-slate-400 pointer-events-none"
+                      />
                     </div>
                   </div>
 
-                  {/* DELIVERY INFO TAG */}
+                  {/* DELIVERY TAG */}
                   {form.state && (
-                    <div className="flex items-center gap-3 px-4 py-3 bg-zinc-900 rounded-xl border border-zinc-800">
-                      <Truck size={14} strokeWidth={1.5} className="text-zinc-500 flex-shrink-0" />
-                      <p className="text-xs text-zinc-400">
+                    <div className="flex items-center gap-3 px-4 py-3 bg-white rounded-xl border border-slate-200 shadow-sm">
+                      <Truck size={14} strokeWidth={1.5} className="text-slate-400 flex-shrink-0" />
+                      <p className="text-xs text-slate-600">
                         {getDeliveryLabel(form.state)}
                       </p>
                     </div>
@@ -348,64 +387,72 @@ export default function CartPage() {
 
           {/* RIGHT — ORDER SUMMARY */}
           <div className="lg:col-span-1">
-            <div className="bg-zinc-900/60 border border-zinc-800/40 rounded-2xl p-5 space-y-4 lg:sticky lg:top-32">
-              <p className="text-[10px] tracking-[0.4em] uppercase text-zinc-500 pb-3 border-b border-zinc-800/60">
+            <div className="bg-white border border-slate-200 rounded-2xl p-5 space-y-4 lg:sticky lg:top-32 shadow-sm">
+              <p className="text-[10px] tracking-[0.4em] uppercase text-slate-400 pb-3 border-b border-slate-200">
                 Order Summary
               </p>
 
               {/* ITEMS */}
               <div className="space-y-2.5">
                 {cartItems.map((item) => (
-                  <div key={`${item.id}-${item.size}`} className="flex justify-between text-xs">
-                    <span className="text-zinc-500 truncate pr-2">
+                  <div
+                    key={`${item.id}-${item.size}`}
+                    className="flex justify-between text-xs"
+                  >
+                    <span className="text-slate-500 truncate pr-2">
                       {item.name} ({item.size}) ×{item.quantity}
                     </span>
-                    <span className="text-zinc-300 flex-shrink-0">
+                    <span className="text-slate-700 flex-shrink-0">
                       ₦{((item.price * item.quantity) / 100).toLocaleString()}
                     </span>
                   </div>
                 ))}
               </div>
 
-              <div className="border-t border-zinc-800/60 pt-3 space-y-2.5">
-                <div className="flex justify-between text-xs text-zinc-500">
+              <div className="border-t border-slate-200 pt-3 space-y-2.5">
+                <div className="flex justify-between text-xs text-slate-500">
                   <span>Subtotal</span>
-                  <span>₦{(orderTotal / 100).toLocaleString()}</span>
+                  <span>₦{(cartTotal / 100).toLocaleString()}</span>
                 </div>
-                <div className="flex justify-between text-xs text-zinc-500">
+                <div className="flex justify-between text-xs text-slate-500">
                   <span>Delivery</span>
                   {form.state ? (
-                    <span className="text-white">₦{deliveryFee.toLocaleString()}</span>
+                    <span className="text-slate-900 font-medium">
+                      ₦{deliveryFee.toLocaleString()}
+                    </span>
                   ) : (
-                    <span className="text-zinc-700 italic">Select state</span>
+                    <span className="text-slate-400 italic">Select state</span>
                   )}
                 </div>
-                <div className="flex justify-between text-sm font-semibold text-white pt-2 border-t border-zinc-800/60">
+                <div className="flex justify-between text-sm font-semibold text-slate-900 pt-2 border-t border-slate-200">
                   <span>Total</span>
                   <span>₦{(grandTotal / 100).toLocaleString()}</span>
                 </div>
               </div>
 
-              {/* CHECKOUT BUTTON */}
+              {/* CHECKOUT */}
               <button
                 onClick={handleCheckout}
                 disabled={loading}
                 className={`w-full py-4 text-xs tracking-[0.25em] uppercase font-semibold rounded-xl transition-all duration-300 ${
                   loading
-                    ? "bg-zinc-800 text-zinc-500 cursor-not-allowed"
-                    : "bg-white text-zinc-950 hover:bg-zinc-100 shadow-lg shadow-white/5"
+                    ? "bg-slate-200 text-slate-400 cursor-not-allowed"
+                    : "bg-slate-900 text-white hover:bg-slate-800 shadow-lg shadow-slate-900/10"
                 }`}
               >
-                {loading ? "Redirecting..." : "Proceed to payment"}
+                {loading ? "Redirecting..." : "Proceed to Payment"}
               </button>
 
-              <p className="text-zinc-700 text-[10px] tracking-wide text-center">
-                Fill all required  fields before paying also check out our <a className="text-indigo-900" href="/shipping_policy">shipping policy</a>
+              <p className="text-slate-400 text-[10px] tracking-wide text-center">
+                Fill all required fields before paying.{" "}
+                <Link href="/policies/returns" className="text-slate-600 hover:text-slate-900 underline underline-offset-2">
+                  Returns Policy
+                </Link>
               </p>
 
               <Link
-                href="/shop"
-                className="block text-center text-[10px] tracking-[0.2em] uppercase text-zinc-600 hover:text-white transition-colors"
+                href="/"
+                className="block text-center text-[10px] tracking-[0.2em] uppercase text-slate-400 hover:text-slate-900 transition-colors"
               >
                 ← Continue Shopping
               </Link>
@@ -416,10 +463,10 @@ export default function CartPage() {
       </div>
 
       {/* MOBILE FIXED BOTTOM CTA */}
-      <div className="fixed bottom-0 left-0 right-0 p-4 bg-zinc-950/95 backdrop-blur-xl border-t border-zinc-800/60 lg:hidden">
+      <div className="fixed bottom-0 left-0 right-0 p-4 bg-slate-200/95 backdrop-blur-xl border-t border-slate-300/60 lg:hidden">
         <div className="flex items-center justify-between mb-3">
-          <span className="text-xs text-zinc-500 uppercase tracking-widest">Total</span>
-          <span className="text-sm font-semibold text-white">
+          <span className="text-xs text-slate-500 uppercase tracking-widest">Total</span>
+          <span className="text-sm font-semibold text-slate-900">
             ₦{(grandTotal / 100).toLocaleString()}
           </span>
         </div>
@@ -428,15 +475,15 @@ export default function CartPage() {
           disabled={loading}
           className={`w-full py-4 text-xs tracking-[0.25em] uppercase font-semibold rounded-xl transition-all ${
             loading
-              ? "bg-zinc-800 text-zinc-500 cursor-not-allowed"
-              : "bg-white text-zinc-950 hover:bg-zinc-100"
+              ? "bg-slate-300 text-slate-500 cursor-not-allowed"
+              : "bg-slate-900 text-white hover:bg-slate-800"
           }`}
         >
           {loading
             ? "Redirecting..."
             : step === "bag"
             ? "Continue to Delivery"
-            : "Pay with Paystack"}
+            : "Proceed to Payment"}
         </button>
       </div>
 

@@ -3,15 +3,13 @@
 import { useState, useEffect } from "react";
 import { useParams, useRouter } from "next/navigation";
 import Link from "next/link";
-import { ShoppingCart, ArrowLeft, ChevronRight } from "lucide-react";
+import { ShoppingCart, ChevronRight, ArrowLeft } from "lucide-react";
 import { useCart } from "../../components/cartProvider";
 import { supabase } from "../../../lib/supabase";
-import { MdOutlineChevronLeft } from "react-icons/md";
-import { HiOutlineArrowLeft } from "react-icons/hi";
-import { FiArrowLeft } from "react-icons/fi";
 
 type Variant = {
   id: string;
+  option_label: string;
   option_value: string;
   stock: number;
 };
@@ -28,6 +26,7 @@ type Product = {
   description: string;
   image_url: string;
   price: number;
+  is_commission: boolean;
   categories: { name: string }[] | null;
   variants: Variant[];
   product_images: ProductImage[];
@@ -55,12 +54,9 @@ export default function ProductPage() {
           description,
           image_url,
           price,
+          is_commission,
           categories ( name ),
-         variants (
-  id,
-  option_value,
-  stock
-),
+          variants ( id, option_label, option_value, stock ),
           product_images ( id, image_url, position )
         `)
         .eq("id", params.id)
@@ -111,50 +107,29 @@ export default function ProductPage() {
 
   if (loading) {
     return (
-      <div className="min-h-screen bg-zinc-950 flex">
-        {/* SKELETON LEFT */}
-        <div className="w-full md:w-1/2 h-screen bg-zinc-900 animate-pulse" />
-        {/* SKELETON RIGHT */}
+      <div className="min-h-screen bg-slate-200 flex font-titillium">
+        <div className="w-full md:w-1/2 h-screen bg-slate-100 animate-pulse" />
         <div className="hidden md:flex flex-col gap-6 flex-1 p-16 pt-24">
-          <div className="h-3 bg-zinc-800 rounded-full w-1/4 animate-pulse" />
-          <div className="h-8 bg-zinc-800 rounded-full w-3/4 animate-pulse" />
-          <div className="h-6 bg-zinc-800 rounded-full w-1/4 animate-pulse" />
+          <div className="h-3 bg-slate-100 rounded-full w-1/4 animate-pulse" />
+          <div className="h-8 bg-slate-100 rounded-full w-3/4 animate-pulse" />
+          <div className="h-6 bg-slate-100 rounded-full w-1/4 animate-pulse" />
           <div className="flex gap-3 mt-4">
-            {[...Array(5)].map((_, i) => (
-              <div key={i} className="w-12 h-12 bg-zinc-800 rounded-xl animate-pulse" />
+            {[...Array(4)].map((_, i) => (
+              <div key={i} className="w-16 h-12 bg-slate-100 rounded-xl animate-pulse" />
             ))}
           </div>
-          <div className="h-14 bg-zinc-800 rounded-2xl mt-4 animate-pulse" />
+          <div className="h-14 bg-slate-100 rounded-2xl mt-4 animate-pulse" />
         </div>
       </div>
     );
   }
 
-
-  <section className="w-full flex justify-center px-4 py-6">
-  <div className="max-w-2xl rounded-2xl border border-neutral-800 bg-neutral-900/70 p-5 text-center shadow-lg backdrop-blur">
-    <p className="text-sm font-medium uppercase tracking-[0.2em] text-neutral-400">
-      Pre-Drop Notice
-    </p>
-
-    <h2 className="mt-2 text-2xl font-bold text-white">
-      Early Access Before the Official Drop
-    </h2>
-
-    <p className="mt-3 text-sm leading-relaxed text-neutral-300">
-      This is a pre-drop release. The official launch date for the full drop
-      will be announced in the coming days. Stay locked in — limited pieces
-      may go live before the main release.
-    </p>
-  </div>
-</section>
-
   if (!product) {
     return (
-      <div className="min-h-screen bg-zinc-950 text-white flex items-center justify-center">
+      <div className="min-h-screen bg-slate-200 text-slate-900 flex items-center justify-center font-titillium">
         <div className="text-center space-y-4">
-          <p className="text-zinc-600 text-xs tracking-[0.3em] uppercase">Product not found</p>
-          <Link href="/" className="text-xs tracking-widest uppercase text-zinc-400 hover:text-white transition-colors border border-zinc-800 px-6 py-3 rounded-xl inline-block hover:border-zinc-600">
+          <p className="text-slate-400 text-xs tracking-[0.3em] uppercase">Product not found</p>
+          <Link href="/" className="text-xs tracking-widest uppercase text-slate-600 hover:text-slate-900 transition-colors border border-slate-300 px-6 py-3 rounded-xl inline-block hover:border-slate-400">
             Back to Shop
           </Link>
         </div>
@@ -167,36 +142,38 @@ export default function ProductPage() {
       ? product.product_images
       : [{ id: "main", image_url: product.image_url, position: 0 }];
 
+  const optionLabel = product.variants[0]?.option_label ?? "Option";
+
   return (
-    <div className="bg-zinc-950 min-h-screen text-white">
+    <div className="bg-slate-200 min-h-screen text-slate-900 font-titillium">
 
       {/* NAV */}
-      <nav className="fixed top-0 left-0 right-0 z-50 bg-zinc-950/80 backdrop-blur-xl border-b border-zinc-800/60">
-        <div className="max-w-[1400px] mx-auto px-4 sm:px-8 py-4 flex items-center">
-        
+      <nav className="fixed top-0 left-0 right-0 z-50 bg-slate-200/80 backdrop-blur-xl border-b border-slate-300/60">
+        <div className="max-w-6xl mx-auto px-4 sm:px-8 py-4 flex items-center">
 
-<button
-  onClick={() => router.back()}
-  className="group flex items-center gap-2 text-zinc-500 hover:text-white transition-all duration-300 text-xs tracking-widest uppercase flex-1"
->
-  <FiArrowLeft 
-    size={14} 
-    className="transition-transform duration-300 group-hover:-translate-x-1"
-  />
-  <span className="group-hover:tracking-[0.2em] transition-all duration-300">
-    Back
-  </span>
-</button>
+          <button
+            onClick={() => router.back()}
+            className="group flex items-center gap-2 text-slate-500 hover:text-slate-900 transition-all duration-300 text-xs tracking-widest uppercase flex-1"
+          >
+            <ArrowLeft
+              size={14}
+              className="transition-transform duration-300 group-hover:-translate-x-1"
+            />
+            <span className="group-hover:tracking-[0.2em] transition-all duration-300">
+              Back
+            </span>
+          </button>
 
+          <Link href="/" className="flex items-center gap-2 flex-1 justify-center">
+            <img src="https://i.imgur.com/IGBf9Dh.png" alt="LoisTech" className="h-7 w-auto" />
+            <span className="text-sm font-semibold tracking-tight text-slate-900">LOIS TECH</span>
+          </Link>
 
-<Link href="/shop"> <h1 className="font-bold tracking-[0.5em] text-sm uppercase flex-1 text-center">
-            EX1LES
-          </h1> </Link>
           <div className="flex justify-end flex-1">
-            <Link href="/cart" className="relative text-zinc-400 hover:text-white transition-colors">
+            <Link href="/cart" className="relative text-slate-600 hover:text-slate-900 transition-colors">
               <ShoppingCart size={18} strokeWidth={1.5} />
               {cartItems.length > 0 && (
-                <span className="absolute -top-2 -right-2 w-4 h-4 bg-white text-black text-[10px] rounded-full flex items-center justify-center font-bold">
+                <span className="absolute -top-2 -right-2 w-4 h-4 bg-slate-900 text-white text-[10px] rounded-full flex items-center justify-center font-bold">
                   {cartItems.length}
                 </span>
               )}
@@ -206,24 +183,23 @@ export default function ProductPage() {
       </nav>
 
       {/* BREADCRUMB */}
-      <div className="max-w-[1400px] mx-auto px-4 sm:px-8 pt-24 pb-4">
-        <div className="flex items-center gap-2 text-[10px] tracking-widest uppercase text-zinc-600">
-          <Link href="/" className="hover:text-zinc-400 transition-colors">Shop</Link>
+      <div className="max-w-6xl mx-auto px-4 sm:px-8 pt-24 pb-4">
+        <div className="flex items-center gap-2 text-[10px] tracking-widest uppercase text-slate-400">
+          <Link href="/" className="hover:text-slate-600 transition-colors">Shop</Link>
           <ChevronRight size={10} />
-          <span className="text-zinc-500">{product.categories?.[0]?.name ?? "Product"}</span>
+          <span className="text-slate-500">{product.categories?.[0]?.name ?? "Product"}</span>
           <ChevronRight size={10} />
-          <span className="text-zinc-400 truncate max-w-[200px]">{product.name}</span>
+          <span className="text-slate-600 truncate max-w-[200px]">{product.name}</span>
         </div>
       </div>
 
       {/* MAIN CONTENT */}
-      <div className="max-w-[1400px] mx-auto px-4 sm:px-8 pb-20">
+      <div className="max-w-6xl mx-auto px-4 sm:px-8 pb-20">
         <div className="grid md:grid-cols-2 gap-8 lg:gap-16">
 
           {/* LEFT — IMAGE GALLERY */}
           <div className="flex gap-3">
 
-            {/* THUMBNAILS — vertical strip */}
             {gallery.length > 1 && (
               <div className="hidden sm:flex flex-col gap-2 w-16 flex-shrink-0">
                 {gallery.map((img, idx) => (
@@ -232,8 +208,8 @@ export default function ProductPage() {
                     onClick={() => handleThumb(img, idx)}
                     className={`w-16 h-16 rounded-xl overflow-hidden border-2 transition-all duration-300 flex-shrink-0 ${
                       activeThumb === idx
-                        ? "border-white/60 opacity-100"
-                        : "border-zinc-800 opacity-50 hover:opacity-80 hover:border-zinc-600"
+                        ? "border-slate-900 opacity-100"
+                        : "border-slate-200 opacity-60 hover:opacity-90 hover:border-slate-400"
                     }`}
                   >
                     <img
@@ -246,9 +222,8 @@ export default function ProductPage() {
               </div>
             )}
 
-            {/* MAIN IMAGE */}
             <div className="flex-1 relative">
-              <div className="rounded-2xl overflow-hidden bg-zinc-900 border border-zinc-800/60 aspect-[3/4]">
+              <div className="rounded-2xl overflow-hidden bg-white border border-slate-200 aspect-square">
                 <img
                   src={mainImage}
                   alt={product.name}
@@ -256,7 +231,6 @@ export default function ProductPage() {
                 />
               </div>
 
-              {/* MOBILE THUMBS */}
               {gallery.length > 1 && (
                 <div className="flex sm:hidden gap-2 mt-3 justify-center">
                   {gallery.map((img, idx) => (
@@ -264,7 +238,7 @@ export default function ProductPage() {
                       key={img.id}
                       onClick={() => handleThumb(img, idx)}
                       className={`w-12 h-12 rounded-lg overflow-hidden border-2 transition-all ${
-                        activeThumb === idx ? "border-white/60" : "border-zinc-800 opacity-50"
+                        activeThumb === idx ? "border-slate-900" : "border-slate-200 opacity-60"
                       }`}
                     >
                       <img src={img.image_url} alt="" className="w-full h-full object-cover" />
@@ -278,123 +252,158 @@ export default function ProductPage() {
           {/* RIGHT — PRODUCT INFO */}
           <div className="flex flex-col gap-6 md:pt-4">
 
-            {/* CATEGORY + NAME + PRICE */}
             <div>
-              <p className="text-[10px] tracking-[0.4em] uppercase text-zinc-600 mb-2">
-                {product.categories?.[0]?.name ?? "EXILES"}
-              </p>
-              <h1 className="text-2xl sm:text-3xl font-light leading-snug text-white">
+              <div className="flex items-center gap-2 mb-2">
+                <p className="text-[10px] tracking-[0.4em] uppercase text-slate-400">
+                  {product.categories?.[0]?.name ?? "LoisTech"}
+                </p>
+                {product.is_commission && (
+                  <span className="text-[9px] uppercase tracking-widest text-amber-700 bg-amber-100 px-2.5 py-1 rounded-full border border-amber-200">
+                    Bespoke
+                  </span>
+                )}
+              </div>
+              <h1 className="text-2xl sm:text-3xl font-semibold leading-snug text-slate-900">
                 {product.name}
               </h1>
               <div className="flex items-baseline gap-3 mt-3">
-                <p className="text-2xl font-semibold text-white">
-                  ₦{(product.price / 100).toLocaleString()}
-                </p>
+                {product.is_commission ? (
+                  <p className="text-lg font-medium text-slate-500">
+                    Custom pricing on consultation
+                  </p>
+                ) : (
+                  <p className="text-2xl font-semibold text-slate-900">
+                    ₦{(product.price / 100).toLocaleString()}
+                  </p>
+                )}
               </div>
             </div>
 
-            {/* DIVIDER */}
-            <div className="border-t border-zinc-800/60" />
+            <div className="border-t border-slate-300/60" />
 
-            {/* SIZE SELECTOR */}
-            <div>
-              <div className="flex items-center justify-between mb-3">
-                <p className="text-xs tracking-[0.2em] uppercase text-zinc-400">
-                  Select Size
-                  {selectedVariant && (
-                    <span className="text-white ml-2">—  {selectedVariant.option_value}</span>
-                  )}
-                </p>
-                <button className="text-[10px] tracking-widest uppercase text-zinc-600 hover:text-zinc-400 transition-colors underline underline-offset-2">
-                  Size Guide
-                </button>
-              </div>
+            {/* COMMISSION FLOW */}
+            {product.is_commission ? (
+              <>
+                <div className="bg-white border border-slate-200 rounded-2xl p-5 space-y-3">
+                  <p className="text-xs tracking-[0.2em] uppercase text-slate-500">
+                    This is a bespoke piece
+                  </p>
+                  <p className="text-sm text-slate-600 leading-relaxed">
+                    This item is engineered entirely around your space and aesthetic preferences.
+                    Request a consultation and our team will design a tailored solution and provide
+                    a custom quote.
+                  </p>
+                </div>
 
-              <div className="flex gap-2 flex-wrap">
-                {product.variants.map((variant) => {
-                  const outOfStock = variant.stock === 0;
-                  const isSelected = selectedVariant?.id === variant.id;
-                  return (
-                    <button
-                      key={variant.id}
-                      onClick={() => !outOfStock && setSelectedVariant(variant)}
-                      disabled={outOfStock}
-                      className={`w-12 h-12 rounded-xl text-xs font-medium transition-all duration-300 relative ${
-                        outOfStock
-                          ? "bg-zinc-900/50 text-zinc-700 cursor-not-allowed border border-zinc-800/50"
-                          : isSelected
-                          ? "bg-white text-zinc-950 border-2 border-white shadow-lg shadow-white/10"
-                          : "bg-zinc-900 text-zinc-300 border border-zinc-700 hover:border-zinc-500 hover:text-white"
-                      }`}
-                    >{variant.option_value}
-                      
-                      {outOfStock && (
-                        <span className="absolute inset-0 flex items-center justify-center">
-                          <span className="w-8 h-px bg-zinc-700 rotate-45 absolute" />
-                        </span>
+                <Link
+                  href="/#consult"
+                  className="w-full py-4 rounded-2xl text-xs tracking-[0.3em] uppercase font-semibold transition-all duration-300 bg-slate-900 text-white hover:bg-slate-800 shadow-lg shadow-slate-900/10 text-center"
+                >
+                  Request Consultation
+                </Link>
+              </>
+            ) : (
+              <>
+                {/* OPTION SELECTOR */}
+                <div>
+                  <div className="flex items-center justify-between mb-3">
+                    <p className="text-xs tracking-[0.2em] uppercase text-slate-500">
+                      Select {optionLabel}
+                      {selectedVariant && (
+                        <span className="text-slate-900 ml-2">— {selectedVariant.option_value}</span>
                       )}
-                    </button>
-                  );
-                })}
-              </div>
+                    </p>
+                  </div>
 
-              {selectedVariant && selectedVariant.stock > 0 && selectedVariant.stock <= 3 && (
-                <p className="text-[10px] text-red-400/80 mt-3 uppercase tracking-widest">
-                  Only {selectedVariant.stock} left in stock
-                </p>
-              )}
-            </div>
+                  <div className="flex gap-2 flex-wrap">
+                    {product.variants.map((variant) => {
+                      const outOfStock = variant.stock === 0;
+                      const isSelected = selectedVariant?.id === variant.id;
+                      return (
+                        <button
+                          key={variant.id}
+                          onClick={() => !outOfStock && setSelectedVariant(variant)}
+                          disabled={outOfStock}
+                          className={`px-4 py-3 rounded-xl text-xs font-medium transition-all duration-300 relative ${
+                            outOfStock
+                              ? "bg-slate-50 text-slate-300 cursor-not-allowed border border-slate-200"
+                              : isSelected
+                              ? "bg-slate-900 text-white border-2 border-slate-900 shadow-lg shadow-slate-900/10"
+                              : "bg-white text-slate-700 border border-slate-300 hover:border-slate-500"
+                          }`}
+                        >
+                          {variant.option_value}
+                          {outOfStock && (
+                            <span className="absolute inset-0 flex items-center justify-center">
+                              <span className="w-8 h-px bg-slate-300 rotate-45 absolute" />
+                            </span>
+                          )}
+                        </button>
+                      );
+                    })}
+                  </div>
 
-            {/* ADD TO CART */}
-            <button
-              onClick={handleAddToCart}
-              disabled={!selectedVariant || added}
-              className={`w-full py-4 rounded-2xl text-xs tracking-[0.3em] uppercase font-semibold transition-all duration-300 ${
-                added
-                  ? "bg-zinc-800 text-zinc-400 cursor-not-allowed"
-                  : !selectedVariant
-                  ? "bg-zinc-900 text-zinc-600 cursor-not-allowed border border-zinc-800"
-                  : "bg-white text-zinc-950 hover:bg-zinc-100 shadow-lg shadow-white/5"
-              }`}
-            >
-              {added
-                ? "✓ Added to Bag"
-                : !selectedVariant
-                ? "Select a Size"
-                : "Add to Bag"}
-            </button>
+                  {selectedVariant && selectedVariant.stock > 0 && selectedVariant.stock <= 3 && (
+                    <p className="text-[10px] text-red-500 mt-3 uppercase tracking-widest">
+                      Only {selectedVariant.stock} left in stock
+                    </p>
+                  )}
+                </div>
 
-            {/* DIVIDER */}
-            <div className="border-t border-zinc-800/60" />
+                {/* ADD TO CART */}
+                <button
+                  onClick={handleAddToCart}
+                  disabled={!selectedVariant || added}
+                  className={`w-full py-4 rounded-2xl text-xs tracking-[0.3em] uppercase font-semibold transition-all duration-300 ${
+                    added
+                      ? "bg-slate-200 text-slate-500 cursor-not-allowed"
+                      : !selectedVariant
+                      ? "bg-slate-100 text-slate-400 cursor-not-allowed border border-slate-200"
+                      : "bg-slate-900 text-white hover:bg-slate-800 shadow-lg shadow-slate-900/10"
+                  }`}
+                >
+                  {added
+                    ? "✓ Added to Bag"
+                    : !selectedVariant
+                    ? `Select a ${optionLabel}`
+                    : "Add to Bag"}
+                </button>
+              </>
+            )}
+
+            <div className="border-t border-slate-300/60" />
 
             {/* DESCRIPTION */}
             <div className="space-y-4">
               <div>
-                <p className="text-[10px] tracking-[0.3em] uppercase text-zinc-500 mb-2">
-                  About This Piece
+                <p className="text-[10px] tracking-[0.3em] uppercase text-slate-400 mb-2">
+                  About This Product
                 </p>
-                <p className="text-sm text-zinc-400 leading-relaxed">
+                <p className="text-sm text-slate-600 leading-relaxed">
                   {product.description}
                 </p>
               </div>
 
-              {/* DETAILS GRID */}
               <div className="grid grid-cols-2 gap-3 mt-4">
-                <div className="bg-zinc-900/60 rounded-xl p-4 border border-zinc-800/40">
-                  <p className="text-[9px] tracking-[0.3em] uppercase text-zinc-600 mb-1">Delivery</p>
-                  <p className="text-xs text-zinc-300">3–4 working days after drop</p>
+                <div className="bg-white rounded-xl p-4 border border-slate-200">
+                  <p className="text-[9px] tracking-[0.3em] uppercase text-slate-400 mb-1">Delivery</p>
+                  <p className="text-xs text-slate-700">
+                    {product.is_commission ? "Scoped on consultation" : "3–5 working days"}
+                  </p>
                 </div>
-                <div className="bg-zinc-900/60 rounded-xl p-4 border border-zinc-800/40">
-                  <p className="text-[9px] tracking-[0.3em] uppercase text-zinc-600 mb-1">Returns</p>
-                  <p className="text-xs text-zinc-300">2 day policy</p>
+                <div className="bg-white rounded-xl p-4 border border-slate-200">
+                  <p className="text-[9px] tracking-[0.3em] uppercase text-slate-400 mb-1">Returns</p>
+                  <p className="text-xs text-slate-700">
+                    {product.is_commission ? "No refund — no damage" : "7 day policy"}
+                  </p>
                 </div>
-                <div className="bg-zinc-900/60 rounded-xl p-4 border border-zinc-800/40">
-                  <p className="text-[9px] tracking-[0.3em] uppercase text-zinc-600 mb-1">Material</p>
-                  <p className="text-xs text-zinc-300">Premium quality</p>
+                <div className="bg-white rounded-xl p-4 border border-slate-200">
+                  <p className="text-[9px] tracking-[0.3em] uppercase text-slate-400 mb-1">Warranty</p>
+                  <p className="text-xs text-slate-700">12 months</p>
                 </div>
-                <div className="bg-zinc-900/60 rounded-xl p-4 border border-zinc-800/40">
-                  <p className="text-[9px] tracking-[0.3em] uppercase text-zinc-600 mb-1">Origin</p>
-                  <p className="text-xs text-zinc-300">EX1LES Studio</p>
+                <div className="bg-white rounded-xl p-4 border border-slate-200">
+                  <p className="text-[9px] tracking-[0.3em] uppercase text-slate-400 mb-1">Support</p>
+                  <p className="text-xs text-slate-700">24/7 monitoring</p>
                 </div>
               </div>
             </div>
