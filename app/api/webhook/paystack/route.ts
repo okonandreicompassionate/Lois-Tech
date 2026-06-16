@@ -27,7 +27,7 @@ export async function POST(req: Request) {
     await resend.emails.send({
       from: "onboarding@resend.dev",
       to: process.env.YOUR_EMAIL!,
-      subject: `🛍️ New EXILES Order — ${reference}`,
+      subject: `🛍️ New Lois Tech Order — ${reference}`,
       text: `
 NEW ORDER RECEIVED!
 

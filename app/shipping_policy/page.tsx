@@ -124,7 +124,7 @@ export default function ShippingPolicy() {
             href="/"
             className="font-display text-lg md:text-xl tracking-[0.35em] text-[#f8f6f2] uppercase no-underline gold-glow"
           >
-            Exiles
+            Lois Tech
           </a>
 
           <div className="flex items-center gap-5 md:gap-8">
@@ -303,11 +303,11 @@ export default function ShippingPolicy() {
         {/* FOOTER */}
         <footer className="border-t border-[#161616] px-6 md:px-12 py-8 flex flex-col sm:flex-row justify-between items-center gap-3 font-body">
           <span className="font-display text-base tracking-[0.4em] text-[#5e564b] uppercase">
-            Exiles
+            Lois Tech
           </span>
 
           <span className="text-[10px] tracking-[0.12em] text-[#5e564b]">
-            © 2025 Exiles. All rights reserved. Lagos, Nigeria.
+            © 2025 Lois Tech. All rights reserved. Lagos, Nigeria.
           </span>
         </footer>
       </div>

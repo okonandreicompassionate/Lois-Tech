@@ -9,9 +9,12 @@ const poppins = Poppins({
 });
 
 export const metadata = {
-  title: "EXILES - TOTEME",
+  title: "Lois Tech",
   description:
-    "Premium fashion brand - Timeless style crafted for modern expression",
+    "Premium Tech brand - Timeless Tech crafted for modern expression",
+  icons: {
+    icon: "https://i.imgur.com/IGBf9Dh.png",
+  },
 };
 
 export default function RootLayout({

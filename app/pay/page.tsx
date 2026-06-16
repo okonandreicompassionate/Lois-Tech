@@ -35,7 +35,7 @@ export default function PayPage() {
   }
 
   const whatsappMessage = encodeURIComponent(`
-NEW ORDER - EXILES
+Lois Tech Order Payment Confirmation
 
 Name: ${order.form.name}
 Phone: ${order.form.phone}
