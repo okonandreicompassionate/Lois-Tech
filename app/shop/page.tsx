@@ -444,10 +444,10 @@ export default function LandingPage() {
             <div>
               <p className="text-[10px] tracking-[0.3em] uppercase text-slate-500 mb-4">Company</p>
               <ul className="space-y-2.5 text-xs text-slate-600">
-                <li><Link href="/#us" className="hover:text-slate-900 transition-colors">About</Link></li>
-                <li><Link href="/#process" className="hover:text-slate-900 transition-colors">Process</Link></li>
-                <li><Link href="/#testimonies" className="hover:text-slate-900 transition-colors">Testimonials</Link></li>
-                <li><Link href="/#hiring" className="hover:text-slate-900 transition-colors">Careers</Link></li>
+                <li><Link target="_blank" href="http://loistech.com.ng/#us" className="hover:text-slate-900 transition-colors">About</Link></li>
+                
+                <li><Link target="_blank" href="http://loistech.com.ng/#testimonies" className="hover:text-slate-900 transition-colors">Testimonials</Link></li>
+                <li><Link target="_blank" href="http://loistech.com.ng/#hiring" className="hover:text-slate-900 transition-colors">Careers</Link></li>
               </ul>
             </div>
 

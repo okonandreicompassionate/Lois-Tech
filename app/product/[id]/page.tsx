@@ -166,12 +166,12 @@ export default function ProductPage() {
 
           <Link href="/shop" className="flex items-center gap-2 flex-1 justify-center">
             <img src="https://i.imgur.com/IGBf9Dh.png" alt="LoisTech" className="h-7 w-auto" />
-            <span className="text-sm font-semibold tracking-tight text-slate-900">LOIS TECH</span>
+            <span className="text-base font-semibold tracking-tight text-slate-900">LOIS TECH</span>
           </Link>
 
           <div className="flex justify-end flex-1">
             <Link href="/cart" className="relative text-slate-600 hover:text-slate-900 transition-colors">
-              <ShoppingCart size={18} strokeWidth={1.5} />
+              <ShoppingCart size={25} strokeWidth={1.5} />
               {cartItems.length > 0 && (
                 <span className="absolute -top-2 -right-2 w-4 h-4 bg-slate-900 text-white text-[10px] rounded-full flex items-center justify-center font-bold">
                   {cartItems.length}

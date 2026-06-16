@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { useState } from "react";
-import { ArrowLeft, ShoppingBag, Truck, ChevronDown } from "lucide-react";
+import { ArrowLeft, ShoppingBag, Truck, ChevronDown,ShoppingCart } from "lucide-react";
 import { useCart } from "../components/cartProvider";
 
 const NIGERIAN_STATES = [
@@ -165,8 +165,8 @@ console.log("grandTotal", grandTotal);
                 : "text-slate-400"
             }`}
           >
-            <ShoppingBag size={11} />
-            Bag
+            <ShoppingCart size={11}  />
+            Cart
           </button>
           <button
             onClick={() => setStep("delivery")}
