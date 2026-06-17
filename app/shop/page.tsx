@@ -4,7 +4,7 @@ import { useState, useEffect } from "react";
 import Link from "next/link";
 import { useCart } from "../components/cartProvider";
 import { supabase } from "../../lib/supabase";
-import { ShoppingCart, ChevronDown } from "lucide-react";
+import { ShoppingCart, ChevronDown, Search, X, Menu } from "lucide-react";
 
 type Variant = {
   id: string;
@@ -34,10 +34,12 @@ type Product = {
 
 export default function LandingPage() {
   const [activeFilter, setActiveFilter] = useState("ALL");
+  const [searchQuery, setSearchQuery] = useState("");
   const [addedId, setAddedId] = useState<string | null>(null);
   const [products, setProducts] = useState<Product[]>([]);
   const [categories, setCategories] = useState<Category[]>([]);
   const [loading, setLoading] = useState(true);
+  const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   const { addToCart, cartItems } = useCart();
 
   useEffect(() => {
@@ -72,12 +74,20 @@ export default function LandingPage() {
     fetchData();
   }, []);
 
-  const filteredProducts =
-    activeFilter === "ALL"
-      ? products
-      : activeFilter === "FEATURED"
-      ? products.filter((p) => p.is_featured)
-      : products.filter((p) => p.categories?.[0]?.slug === activeFilter);
+  const filteredProducts = products
+    .filter((p) => {
+      if (activeFilter === "ALL") return true;
+      if (activeFilter === "FEATURED") return p.is_featured;
+      return p.categories?.[0]?.slug === activeFilter;
+    })
+    .filter((p) => {
+      if (!searchQuery.trim()) return true;
+      const q = searchQuery.trim().toLowerCase();
+      return (
+        p.name.toLowerCase().includes(q) ||
+        (p.categories?.[0]?.name ?? "").toLowerCase().includes(q)
+      );
+    });
 
   const handleQuickAdd = (e: React.MouseEvent, product: Product) => {
     e.preventDefault();
@@ -100,25 +110,35 @@ export default function LandingPage() {
     setTimeout(() => setAddedId(null), 1500);
   };
 
+  const clearFilters = () => {
+    setActiveFilter("ALL");
+    setSearchQuery("");
+  };
+
+  const selectFilterAndClose = (slug: string) => {
+    setActiveFilter(slug);
+    setMobileMenuOpen(false);
+  };
+
   return (
     <div className="bg-slate-200 min-h-screen text-slate-900 font-titillium">
 
       {/* NAV */}
       <nav className="fixed top-0 left-0 right-0 z-50 bg-slate-200/80 backdrop-blur-xl border-b border-slate-300/60">
-        <div className="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8 py-4 flex items-center justify-between">
+        <div className="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8 py-3.5 sm:py-4 flex items-center justify-between gap-3">
           {/* LOGO */}
-          <Link href="/" className="flex items-center gap-3">
-            <img src="https://i.imgur.com/IGBf9Dh.png" alt="LoisTech" className="h-8 w-auto" />
-            <span className="text-base font-semibold tracking-tight text-slate-900">LOIS TECH</span>
+          <Link href="/" className="flex items-center gap-2 sm:gap-3 min-w-0">
+            <img src="https://i.imgur.com/IGBf9Dh.png" alt="LoisTech" className="h-7 sm:h-8 w-auto flex-shrink-0" />
+            <span className="text-sm sm:text-base font-semibold tracking-tight text-slate-900 truncate">LOIS TECH</span>
           </Link>
 
-          {/* CATEGORY NAV */}
-          <div className="hidden lg:flex items-center gap-6">
+          {/* DESKTOP CATEGORY NAV */}
+          <div className="hidden lg:flex items-center gap-6 flex-shrink-0">
             {categories.map((cat) => (
               <button
                 key={cat.id}
                 onClick={() => setActiveFilter(cat.slug)}
-                className={`text-xs font-medium tracking-wide transition-colors ${
+                className={`text-xs font-medium tracking-wide transition-colors whitespace-nowrap ${
                   activeFilter === cat.slug ? "text-slate-900" : "text-slate-500 hover:text-slate-900"
                 }`}
               >
@@ -127,20 +147,58 @@ export default function LandingPage() {
             ))}
           </div>
 
-          {/* CART */}
-          <Link href="/cart" className="relative flex items-center gap-2 text-slate-700 hover:text-slate-900 transition-colors">
-            <ShoppingCart size={25} strokeWidth={1.5} />
-            {cartItems.length > 0 && (
-              <span className="absolute -top-2 -right-2 w-4 h-4 bg-slate-900 text-white text-[10px] rounded-full flex items-center justify-center font-bold">
-                {cartItems.length}
-              </span>
-            )}
-          </Link>
+          {/* RIGHT SIDE — CART + MOBILE MENU */}
+          <div className="flex items-center gap-2 sm:gap-4 flex-shrink-0">
+            <Link href="/cart" className="relative flex items-center text-slate-700 hover:text-slate-900 transition-colors p-1">
+              <ShoppingCart size={22} className="sm:hidden" strokeWidth={1.5} />
+              <ShoppingCart size={25} className="hidden sm:block" strokeWidth={1.5} />
+              {cartItems.length > 0 && (
+                <span className="absolute -top-1.5 -right-1.5 w-4 h-4 bg-slate-900 text-white text-[10px] rounded-full flex items-center justify-center font-bold">
+                  {cartItems.length}
+                </span>
+              )}
+            </Link>
+
+            <button
+              onClick={() => setMobileMenuOpen((prev) => !prev)}
+              className="lg:hidden flex items-center justify-center w-9 h-9 rounded-lg text-slate-700 hover:bg-slate-300/50 transition-colors"
+              aria-label="Toggle menu"
+            >
+              {mobileMenuOpen ? <X size={20} /> : <Menu size={20} />}
+            </button>
+          </div>
         </div>
+
+        {/* MOBILE / TABLET DROPDOWN MENU */}
+        {mobileMenuOpen && (
+          <div className="lg:hidden border-t border-slate-300/60 bg-slate-200/95 backdrop-blur-xl">
+            <div className="max-w-6xl mx-auto px-4 sm:px-6 py-3 flex flex-col gap-0.5">
+              <button
+                onClick={() => selectFilterAndClose("ALL")}
+                className={`text-left px-3 py-3 rounded-lg text-sm font-medium transition-colors ${
+                  activeFilter === "ALL" ? "bg-white text-slate-900" : "text-slate-600 hover:bg-white/60"
+                }`}
+              >
+                All Products
+              </button>
+              {categories.map((cat) => (
+                <button
+                  key={cat.id}
+                  onClick={() => selectFilterAndClose(cat.slug)}
+                  className={`text-left px-3 py-3 rounded-lg text-sm font-medium transition-colors ${
+                    activeFilter === cat.slug ? "bg-white text-slate-900" : "text-slate-600 hover:bg-white/60"
+                  }`}
+                >
+                  {cat.name}
+                </button>
+              ))}
+            </div>
+          </div>
+        )}
       </nav>
 
       {/* HERO */}
-      <div className="relative w-full h-[70vh] sm:h-screen overflow-hidden">
+      <div className="relative w-full h-[60vh] sm:h-[70vh] lg:h-screen overflow-hidden">
         <img
           src="https://i.imgur.com/uPgwKby.jpeg"
           alt="Hero"
@@ -148,40 +206,40 @@ export default function LandingPage() {
         />
         <div className="absolute inset-0 bg-gradient-to-b from-black/25 via-black/10 to-slate-200" />
 
-      {/* gradient overlay */}
-  <div className="absolute inset-0 bg-gradient-to-t from-slate-200/50 via-black/30 to-transparent" />
+        {/* gradient overlay */}
+        <div className="absolute inset-0 bg-gradient-to-t from-slate-200/50 via-black/30 to-transparent" />
 
-  <div className="absolute bottom-40 left-4 sm:left-8 lg:left-16">
-    <p className="text-[12px] tracking-[0.5em] uppercase text-slate-200/80 mb-4">
-      The Future of
-    </p>
+        <div className="absolute bottom-24 sm:bottom-32 lg:bottom-40 left-4 sm:left-8 lg:left-16 right-4 sm:right-8 lg:right-auto">
+          <p className="text-[10px] sm:text-[12px] tracking-[0.3em] sm:tracking-[0.5em] uppercase text-slate-200/80 mb-3 sm:mb-4">
+            The Future of
+          </p>
 
-    <h2 className="text-4xl sm:text-6xl lg:text-7xl font-semibold leading-none tracking-tight text-white drop-shadow-lg">
-      Intelligent<br />Living
-    </h2>
+          <h2 className="text-3xl sm:text-5xl lg:text-7xl font-semibold leading-none tracking-tight text-white drop-shadow-lg">
+            Intelligent<br />Living
+          </h2>
 
-    <p className="text-[11px] tracking-[0.4em] uppercase text-white mt-5">
-      Smart Automation · Security Systems · Acoustic & Interior Integration
-    </p>
-  </div>
+          <p className="text-[9px] sm:text-[10px] lg:text-[11px] tracking-[0.2em] sm:tracking-[0.4em] uppercase text-white mt-4 sm:mt-5 max-w-[280px] sm:max-w-none leading-relaxed">
+            Smart Automation · Security Systems · Acoustic & Interior Integration
+          </p>
+        </div>
 
-        <div className="absolute bottom-10 left-1/2 -translate-x-1/2 flex flex-col items-center gap-2">
-          <div className="w-7 h-7 rounded-full border border-gray-50/40 flex items-center justify-center animate-bounce">
-            <ChevronDown size={12} className="text-white" />
+        <div className="absolute bottom-6 sm:bottom-10 left-1/2 -translate-x-1/2 flex flex-col items-center gap-2">
+          <div className="w-6 h-6 sm:w-7 sm:h-7 rounded-full border border-gray-50/40 flex items-center justify-center animate-bounce">
+            <ChevronDown size={11} className="text-white" />
           </div>
         </div>
       </div>
 
       {/* SHOP BY CATEGORY */}
-      <div className="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8 pt-16 pb-8">
-        <p className="text-[10px] tracking-[0.4em] uppercase text-slate-500 mb-6">
+      <div className="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8 pt-10 sm:pt-16 pb-6 sm:pb-8">
+        <p className="text-[10px] tracking-[0.4em] uppercase text-slate-500 mb-4 sm:mb-6">
           Shop by Department
         </p>
 
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-4">
           <button
             onClick={() => setActiveFilter("ALL")}
-            className={`text-left p-5 rounded-2xl border transition-all duration-300 ${
+            className={`text-left p-4 sm:p-5 rounded-2xl border transition-all duration-300 ${
               activeFilter === "ALL"
                 ? "border-slate-900 bg-slate-900 text-white"
                 : "border-slate-300 bg-white text-slate-900 hover:border-slate-400"
@@ -199,7 +257,7 @@ export default function LandingPage() {
               <button
                 key={cat.id}
                 onClick={() => setActiveFilter(cat.slug)}
-                className={`text-left p-5 rounded-2xl border transition-all duration-300 ${
+                className={`text-left p-4 sm:p-5 rounded-2xl border transition-all duration-300 ${
                   isActive
                     ? "border-slate-900 bg-slate-900 text-white"
                     : "border-slate-300 bg-white text-slate-900 hover:border-slate-400"
@@ -221,12 +279,34 @@ export default function LandingPage() {
       </div>
 
       {/* PRODUCTS SECTION */}
-      <div className="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8 py-12 pb-20">
+      <div className="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8 py-8 sm:py-12 pb-16 sm:pb-20">
 
-        <div className="flex justify-between items-center mb-8">
+        {/* SEARCH BAR */}
+        <div className="relative mb-5 sm:mb-6">
+          <Search size={16} className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-400 pointer-events-none" />
+          <input
+            type="text"
+            value={searchQuery}
+            onChange={(e) => setSearchQuery(e.target.value)}
+            placeholder="Search products..."
+            className="w-full bg-white border border-slate-300 text-slate-900 text-sm pl-11 pr-10 py-3.5 rounded-xl outline-none focus:border-slate-500 focus:ring-1 focus:ring-slate-200 transition-colors placeholder-slate-400"
+          />
+          {searchQuery && (
+            <button
+              onClick={() => setSearchQuery("")}
+              className="absolute right-4 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-700 transition-colors"
+            >
+              <X size={16} />
+            </button>
+          )}
+        </div>
+
+        <div className="flex flex-col sm:flex-row sm:justify-between sm:items-center gap-3 mb-6 sm:mb-8">
           <div>
             <h2 className="text-sm font-semibold text-slate-900">
-              {activeFilter === "ALL"
+              {searchQuery
+                ? `Results for "${searchQuery}"`
+                : activeFilter === "ALL"
                 ? "All Products"
                 : activeFilter === "FEATURED"
                 ? "Featured"
@@ -237,11 +317,11 @@ export default function LandingPage() {
             </p>
           </div>
 
-          <div className="relative">
+          <div className="relative self-start sm:self-auto">
             <select
               value={activeFilter}
               onChange={(e) => setActiveFilter(e.target.value)}
-              className="appearance-none bg-white border border-slate-300 text-slate-700 text-xs px-4 py-2 pr-8 outline-none cursor-pointer rounded-xl transition-colors hover:border-slate-400"
+              className="appearance-none bg-white border border-slate-300 text-slate-700 text-xs px-4 py-2.5 pr-8 outline-none cursor-pointer rounded-xl transition-colors hover:border-slate-400 w-full sm:w-auto"
             >
               <option value="ALL">All</option>
               <option value="FEATURED">Featured</option>
@@ -255,7 +335,7 @@ export default function LandingPage() {
 
         {/* SKELETON */}
         {loading && (
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-5">
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 sm:gap-5">
             {[...Array(6)].map((_, i) => (
               <div key={i} className="bg-white rounded-2xl overflow-hidden animate-pulse border border-slate-200">
                 <div className="aspect-square bg-slate-100" />
@@ -271,7 +351,7 @@ export default function LandingPage() {
 
         {/* PRODUCT GRID */}
         {!loading && (
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-5">
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 sm:gap-5">
             {filteredProducts.map((product) => {
               const optionLabel = product.variants[0]?.option_label ?? "Option";
 
@@ -379,11 +459,13 @@ export default function LandingPage() {
         {/* EMPTY STATE */}
         {!loading && filteredProducts.length === 0 && (
           <div className="flex flex-col items-center justify-center h-64 gap-4">
-            <p className="text-slate-400 text-[10px] tracking-[0.3em] uppercase">
-              No products in this department yet
+            <p className="text-slate-400 text-[10px] tracking-[0.3em] uppercase text-center px-4">
+              {searchQuery
+                ? `No products match "${searchQuery}"`
+                : "No products in this department yet"}
             </p>
             <button
-              onClick={() => setActiveFilter("ALL")}
+              onClick={clearFilters}
               className="text-[10px] tracking-widest uppercase text-slate-600 border border-slate-300 px-6 py-2.5 rounded-xl hover:border-slate-900 hover:text-slate-900 transition-all"
             >
               View All
@@ -393,20 +475,20 @@ export default function LandingPage() {
       </div>
 
       {/* CONSULTATION CTA STRIP */}
-      <section className="bg-slate-900 py-16">
+      <section className="bg-slate-900 py-12 sm:py-16">
         <div className="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8 text-center">
           <p className="text-[10px] tracking-[0.4em] uppercase text-white/40 mb-3">
             Bespoke Engineering
           </p>
-          <h2 className="text-2xl sm:text-3xl font-semibold text-white mb-4">
+          <h2 className="text-xl sm:text-2xl lg:text-3xl font-semibold text-white mb-4">
             Looking for something fully custom?
           </h2>
-          <p className="text-sm text-white/60 max-w-xl mx-auto mb-8 leading-relaxed">
+          <p className="text-sm text-white/60 max-w-xl mx-auto mb-7 sm:mb-8 leading-relaxed">
             Acoustic Engineering and Interior Design pieces are tailored entirely
             to your space and aesthetic. Request a consultation to begin.
           </p>
           <Link
-          target="_blank"
+            target="_blank"
             href="http://loistech.com.ng/#consult"
             className="inline-flex items-center justify-center rounded-xl bg-white px-6 py-3 text-sm font-semibold text-slate-900 hover:bg-white/90 transition-colors"
           >
@@ -417,10 +499,10 @@ export default function LandingPage() {
 
       {/* FOOTER */}
       <footer className="bg-slate-300">
-        <div className="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8 py-14">
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-10">
+        <div className="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8 py-10 sm:py-14">
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-8 sm:gap-10">
 
-            <div className="col-span-2 lg:col-span-1">
+            <div className="col-span-1 sm:col-span-2 lg:col-span-1">
               <div className="flex items-center gap-2 mb-4">
                 <img src="https://i.imgur.com/IGBf9Dh.png" alt="LoisTech" className="h-7 w-auto" />
                 <span className="text-sm font-semibold tracking-tight text-slate-900">LOIS TECH</span>
@@ -445,7 +527,6 @@ export default function LandingPage() {
               <p className="text-[10px] tracking-[0.3em] uppercase text-slate-500 mb-4">Company</p>
               <ul className="space-y-2.5 text-xs text-slate-600">
                 <li><Link target="_blank" href="http://loistech.com.ng/#us" className="hover:text-slate-900 transition-colors">About</Link></li>
-                
                 <li><Link target="_blank" href="http://loistech.com.ng/#testimonies" className="hover:text-slate-900 transition-colors">Testimonials</Link></li>
                 <li><Link target="_blank" href="http://loistech.com.ng/#hiring" className="hover:text-slate-900 transition-colors">Careers</Link></li>
               </ul>
@@ -455,8 +536,6 @@ export default function LandingPage() {
             <div>
               <p className="text-[10px] tracking-[0.3em] uppercase text-slate-500 mb-4">Trust & Policies</p>
               <ul className="space-y-2.5 text-xs text-slate-600">
-               
-               
                 <li><Link href="/policies/sop" className="hover:text-slate-900 transition-colors">4-Phase SOP Summary</Link></li>
                 <li><Link target="_blank" href="https://loistech.com.ng/privacy.html" className="hover:text-slate-900 transition-colors">Privacy Policy</Link></li>
                 <li><Link target="_blank" href="https://loistech.com.ng/tc.html" className="hover:text-slate-900 transition-colors">Terms & Conditions</Link></li>
@@ -465,7 +544,7 @@ export default function LandingPage() {
 
           </div>
 
-          <div className="border-t border-slate-200/60 mt-12 pt-6 flex flex-col sm:flex-row justify-between items-center gap-4 text-[10px] text-slate-500 tracking-widest uppercase">
+          <div className="border-t border-slate-200/60 mt-10 sm:mt-12 pt-6 flex flex-col sm:flex-row justify-between items-center gap-4 text-[10px] text-slate-500 tracking-widest uppercase">
             <p>© {new Date().getFullYear()} LoisTech. All rights reserved.</p>
             <div className="flex gap-6">
               <a href="https://www.instagram.com/l0istech?igsh=NzczbDQ4d2RheGx2" target="_blank" className="hover:text-slate-900 cursor-pointer transition-colors">Instagram</a>
