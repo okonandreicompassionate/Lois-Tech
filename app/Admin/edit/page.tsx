@@ -11,8 +11,8 @@ const inputClass =
   "w-full bg-zinc-900 border border-zinc-800 text-white text-sm px-4 py-3 rounded-xl outline-none focus:border-zinc-600 transition-colors placeholder-zinc-600";
 
 type Category = { id: string; name: string; slug: string };
-type Variant = { id?: string; option_label: string; option_value: string; stock: number };
-type ProductImage = { id?: string; image_url: string; position: number };
+type Variant = { id?: string; client_id?: string; option_label: string; option_value: string; stock: number };
+type ProductImage = { id?: string; client_id?: string; image_url: string; position: number };
 
 type Product = {
   id: string;
@@ -26,6 +26,16 @@ type Product = {
   variants: Variant[];
   product_images: ProductImage[];
 };
+
+function createRowId() {
+  return typeof crypto !== "undefined" && "randomUUID" in crypto
+    ? crypto.randomUUID()
+    : `${Date.now()}-${Math.random().toString(16).slice(2)}`;
+}
+
+function rowKey(row: { id?: string; client_id?: string }) {
+  return row.id ?? row.client_id ?? createRowId();
+}
 
 export default function EditProductsPage() {
   const router = useRouter();
@@ -71,10 +81,17 @@ export default function EditProductsPage() {
 
     const parsed: Product[] = (data ?? []).map((p: any) => ({
       ...p,
-      variants: p.variants ?? [],
-      product_images: (p.product_images ?? []).sort(
-        (a: ProductImage, b: ProductImage) => a.position - b.position
-      ),
+      variants: (p.variants ?? []).map((variant: Variant) => ({
+        ...variant,
+        client_id: variant.id ?? createRowId(),
+      })),
+      product_images: (p.product_images ?? [])
+        .sort((a: ProductImage, b: ProductImage) => a.position - b.position)
+        .map((image: ProductImage, idx: number) => ({
+          ...image,
+          client_id: image.id ?? createRowId(),
+          position: idx,
+        })),
     }));
 
     setProducts(parsed);
@@ -101,7 +118,10 @@ export default function EditProductsPage() {
   function addVariantRow(productId: string) {
     const variants = editData[productId].variants;
     const label = variants[0]?.option_label ?? "Color";
-    updateField(productId, "variants", [...variants, { option_label: label, option_value: "", stock: 0 }]);
+    updateField(productId, "variants", [
+      ...variants,
+      { client_id: createRowId(), option_label: label, option_value: "", stock: 0 },
+    ]);
   }
 
   function removeVariantRow(productId: string, idx: number) {
@@ -124,12 +144,14 @@ export default function EditProductsPage() {
     const images = editData[productId].product_images;
     updateField(productId, "product_images", [
       ...images,
-      { image_url: "", position: images.length },
+      { client_id: createRowId(), image_url: "", position: images.length },
     ]);
   }
 
   function removeImageSlot(productId: string, idx: number) {
-    const images = editData[productId].product_images.filter((_, i) => i !== idx);
+    const images = editData[productId].product_images
+      .filter((_, i) => i !== idx)
+      .map((img, position) => ({ ...img, position }));
     updateField(productId, "product_images", images);
   }
 
@@ -209,11 +231,23 @@ export default function EditProductsPage() {
   async function handleDelete(id: string) {
     if (!confirm("Delete this product? This cannot be undone.")) return;
     setDeleting(id);
-    await supabase.from("variants").delete().eq("product_id", id);
-    await supabase.from("product_images").delete().eq("product_id", id);
-    await supabase.from("products").delete().eq("id", id);
-    setDeleting(null);
-    await fetchProducts();
+
+    try {
+      const { error: vErr } = await supabase.from("variants").delete().eq("product_id", id);
+      if (vErr) throw new Error("Failed to delete variants: " + vErr.message);
+
+      const { error: iErr } = await supabase.from("product_images").delete().eq("product_id", id);
+      if (iErr) throw new Error("Failed to delete images: " + iErr.message);
+
+      const { error: pErr } = await supabase.from("products").delete().eq("id", id);
+      if (pErr) throw new Error("Failed to delete product: " + pErr.message);
+
+      await fetchProducts();
+    } catch (err: any) {
+      alert(err.message);
+    } finally {
+      setDeleting(null);
+    }
   }
 
   if (!authed) {
@@ -257,7 +291,7 @@ export default function EditProductsPage() {
           </div>
           <div className="flex items-center gap-4">
             <button
-              onClick={() => router.push("/admin")}
+              onClick={() => router.push("/Admin")}
               className="text-xs tracking-widest uppercase text-zinc-500 hover:text-white transition-colors"
             >
               + Add New
@@ -467,7 +501,7 @@ export default function EditProductsPage() {
 
                         <div className="space-y-2">
                           {ed.variants.map((v, idx) => (
-                            <div key={idx} className="flex items-center gap-2">
+                            <div key={rowKey(v)} className="flex items-center gap-2">
                               <input
                                 type="text"
                                 placeholder={`${currentLabel} (e.g. Black)`}
@@ -541,7 +575,7 @@ export default function EditProductsPage() {
                         </div>
                         <div className="space-y-2">
                           {ed.product_images.map((img, idx) => (
-                            <div key={idx} className="flex gap-2 items-start">
+                            <div key={rowKey(img)} className="flex gap-2 items-start">
                               <div className="flex-1 space-y-1">
                                 <input
                                   type="text"

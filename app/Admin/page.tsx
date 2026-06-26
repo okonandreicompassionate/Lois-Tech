@@ -8,9 +8,16 @@ import { Plus, Trash2, CheckCircle } from "lucide-react";
 const ADMIN_PASSWORD = process.env.NEXT_PUBLIC_ADMIN_PASSWORD ?? "";
 
 type Category = { id: string; name: string; slug: string };
-type VariantRow = { option_value: string; stock: number };
+type VariantRow = { client_id: string; option_value: string; stock: number };
+type ImageRow = { client_id: string; url: string };
 
 const inputClass = "w-full bg-white border border-slate-300 text-slate-900 text-sm px-4 py-3 rounded-xl outline-none focus:border-slate-500 focus:ring-1 focus:ring-slate-200 transition-colors placeholder-slate-400";
+
+function createRowId() {
+  return typeof crypto !== "undefined" && "randomUUID" in crypto
+    ? crypto.randomUUID()
+    : `${Date.now()}-${Math.random().toString(16).slice(2)}`;
+}
 
 export default function AdminPage() {
   const router = useRouter();
@@ -34,11 +41,15 @@ export default function AdminPage() {
   const [hasVariants, setHasVariants] = useState(false);
   const [optionLabel, setOptionLabel] = useState("Color");
   const [variants, setVariants] = useState<VariantRow[]>([
-    { option_value: "", stock: 0 },
+    { client_id: createRowId(), option_value: "", stock: 0 },
   ]);
   const [singleStock, setSingleStock] = useState(0);
 
-  const [images, setImages] = useState<string[]>(["", "", ""]);
+  const [images, setImages] = useState<ImageRow[]>([
+    { client_id: createRowId(), url: "" },
+    { client_id: createRowId(), url: "" },
+    { client_id: createRowId(), url: "" },
+  ]);
 
   useEffect(() => {
     if (authed) fetchCategories();
@@ -63,7 +74,7 @@ export default function AdminPage() {
   }
 
   function addVariantRow() {
-    setVariants([...variants, { option_value: "", stock: 0 }]);
+    setVariants([...variants, { client_id: createRowId(), option_value: "", stock: 0 }]);
   }
 
   function removeVariantRow(idx: number) {
@@ -78,12 +89,12 @@ export default function AdminPage() {
 
   function handleImageChange(idx: number, val: string) {
     const updated = [...images];
-    updated[idx] = val;
+    updated[idx] = { ...updated[idx], url: val };
     setImages(updated);
   }
 
   function addImageSlot() {
-    setImages([...images, ""]);
+    setImages([...images, { client_id: createRowId(), url: "" }]);
   }
 
   function removeImageSlot(idx: number) {
@@ -160,17 +171,17 @@ export default function AdminPage() {
       }
 
       const validImages = images
-        .map((url, idx) => ({ url: url.trim(), idx }))
-        .filter((i) => i.url !== "");
+        .map((image) => image.url.trim())
+        .filter((url) => url !== "");
 
       if (validImages.length > 0) {
         const { error: imageError } = await supabase
           .from("product_images")
           .insert(
-            validImages.map((i) => ({
+            validImages.map((url, idx) => ({
               product_id: product.id,
-              image_url: i.url,
-              position: i.idx,
+              image_url: url,
+              position: idx,
             }))
           );
 
@@ -193,9 +204,13 @@ export default function AdminPage() {
       });
       setHasVariants(false);
       setOptionLabel("Color");
-      setVariants([{ option_value: "", stock: 0 }]);
+      setVariants([{ client_id: createRowId(), option_value: "", stock: 0 }]);
       setSingleStock(0);
-      setImages(["", "", ""]);
+      setImages([
+        { client_id: createRowId(), url: "" },
+        { client_id: createRowId(), url: "" },
+        { client_id: createRowId(), url: "" },
+      ]);
       setTimeout(() => setSuccess(false), 3000);
 
     } catch (err) {
@@ -246,7 +261,7 @@ export default function AdminPage() {
             <span className="text-slate-500 text-xs tracking-widest uppercase">Add Product</span>
           </div>
           <div className="flex items-center gap-4">
-            <button onClick={() => router.push("/admin/edit")} className="text-xs tracking-widest uppercase text-slate-500 hover:text-slate-900 transition-colors">
+            <button onClick={() => router.push("/Admin/edit")} className="text-xs tracking-widest uppercase text-slate-500 hover:text-slate-900 transition-colors">
               Edit Products
             </button>
             <button onClick={() => router.push("/")} className="text-xs tracking-widest uppercase text-slate-500 hover:text-slate-900 transition-colors">
@@ -436,7 +451,7 @@ export default function AdminPage() {
 
                   <div className="space-y-2">
                     {variants.map((v, idx) => (
-                      <div key={idx} className="flex items-center gap-2">
+                      <div key={v.client_id} className="flex items-center gap-2">
                         <input
                           type="text"
                           placeholder={`${optionLabel || "Option"} value (e.g. Black)`}
@@ -520,20 +535,20 @@ export default function AdminPage() {
               </div>
 
               <div className="space-y-3">
-                {images.map((url, idx) => (
-                  <div key={idx} className="flex gap-2 items-start">
+                {images.map((image, idx) => (
+                  <div key={image.client_id} className="flex gap-2 items-start">
                     <div className="flex-1 space-y-2">
                       <input
                         type="text"
                         placeholder={`Image ${idx + 1} URL`}
-                        value={url}
+                        value={image.url}
                         onChange={(e) => handleImageChange(idx, e.target.value)}
                         className={inputClass}
                       />
-                      {url && (
+                      {image.url && (
                         <div className="h-24 rounded-xl overflow-hidden bg-slate-100 border border-slate-200">
                           <img
-                            src={url}
+                            src={image.url}
                             alt={`Preview ${idx + 1}`}
                             className="w-full h-full object-cover"
                             onError={(e) => { (e.target as HTMLImageElement).style.display = "none"; }}
