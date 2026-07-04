@@ -4,6 +4,7 @@ import { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
 import { supabase } from "../../lib/supabase";
 import { Plus, Trash2, CheckCircle } from "lucide-react";
+import { clampDiscountPercentage, persistProductDiscount } from "../../lib/pricing";
 
 const ADMIN_PASSWORD = process.env.NEXT_PUBLIC_ADMIN_PASSWORD ?? "";
 
@@ -34,6 +35,7 @@ export default function AdminPage() {
     price: "",
     image_url: "",
     category_id: "",
+    discount_percentage: "",
     is_featured: false,
     is_commission: false,
   });
@@ -51,14 +53,16 @@ export default function AdminPage() {
     { client_id: createRowId(), url: "" },
   ]);
 
-  useEffect(() => {
-    if (authed) fetchCategories();
-  }, [authed]);
-
   async function fetchCategories() {
     const { data } = await supabase.from("categories").select("id, name, slug");
     setCategories(data ?? []);
   }
+
+  useEffect(() => {
+    if (authed) {
+      fetchCategories();
+    }
+  }, [authed]);
 
   function handleLogin() {
     if (password === ADMIN_PASSWORD) setAuthed(true);
@@ -134,6 +138,7 @@ export default function AdminPage() {
 
     try {
       const priceInKobo = Math.round(parseFloat(form.price) * 100);
+      const discountPercentage = clampDiscountPercentage(form.discount_percentage);
 
       const { data: product, error: productError } = await supabase
         .from("products")
@@ -192,6 +197,8 @@ export default function AdminPage() {
         }
       }
 
+      await persistProductDiscount(product.id, discountPercentage, supabase);
+
       setSuccess(true);
       setForm({
         name: "",
@@ -199,6 +206,7 @@ export default function AdminPage() {
         price: "",
         image_url: "",
         category_id: "",
+        discount_percentage: "",
         is_featured: false,
         is_commission: false,
       });
@@ -264,6 +272,9 @@ export default function AdminPage() {
             <button onClick={() => router.push("/Admin/edit")} className="text-xs tracking-widest uppercase text-slate-500 hover:text-slate-900 transition-colors">
               Edit Products
             </button>
+            <button onClick={() => router.push("/Admin/orders")} className="text-xs tracking-widest uppercase text-slate-500 hover:text-slate-900 transition-colors">
+              Orders
+            </button>
             <button onClick={() => router.push("/")} className="text-xs tracking-widest uppercase text-slate-500 hover:text-slate-900 transition-colors">
               View Shop
             </button>
@@ -276,7 +287,7 @@ export default function AdminPage() {
         {success && (
           <div className="flex items-center gap-3 bg-green-50 border border-green-200 text-green-700 px-4 py-3 rounded-xl mb-6 text-sm">
             <CheckCircle size={16} />
-            Product added successfully! It's live now.
+            Product added successfully! It&apos;s live now.
           </div>
         )}
 
@@ -336,13 +347,27 @@ export default function AdminPage() {
                   </select>
                 </div>
 
+                <div className="relative">
+                  <input
+                    type="number"
+                    name="discount_percentage"
+                    placeholder="Discount %"
+                    value={form.discount_percentage}
+                    onChange={handleFormChange}
+                    className={`${inputClass} pr-10`}
+                    min="0"
+                    max="100"
+                  />
+                  <span className="absolute right-4 top-1/2 -translate-y-1/2 text-slate-400 text-sm">%</span>
+                </div>
+
                 <label className="flex items-center gap-3 px-4 py-3 bg-slate-50 border border-slate-200 rounded-xl cursor-pointer hover:border-slate-300 transition-colors">
                   <div className={`w-10 h-5 rounded-full transition-colors relative flex-shrink-0 ${form.is_featured ? "bg-slate-900" : "bg-slate-300"}`}>
                     <div className={`absolute top-0.5 w-4 h-4 bg-white rounded-full transition-all shadow ${form.is_featured ? "left-5" : "left-0.5"}`} />
                   </div>
                   <div>
                     <p className="text-xs text-slate-900">Mark as Featured</p>
-                    <p className="text-[10px] text-slate-500">Shows "Featured" badge on product card</p>
+                    <p className="text-[10px] text-slate-500">Shows &quot;Featured&quot; badge on product card</p>
                   </div>
                   <input type="checkbox" name="is_featured" checked={form.is_featured} onChange={handleFormChange} className="hidden" />
                 </label>
@@ -353,7 +378,7 @@ export default function AdminPage() {
                   </div>
                   <div>
                     <p className="text-xs text-slate-900">Commission / Bespoke Item</p>
-                    <p className="text-[10px] text-amber-700">Shows "Request Consultation" instead of Add to Cart</p>
+                    <p className="text-[10px] text-amber-700">Shows &quot;Request Consultation&quot; instead of Add to Cart</p>
                   </div>
                   <input type="checkbox" name="is_commission" checked={form.is_commission} onChange={handleFormChange} className="hidden" />
                 </label>
@@ -411,7 +436,7 @@ export default function AdminPage() {
                     className={inputClass}
                   />
                   <p className="text-[10px] text-slate-400 mt-2">
-                    Customers will see a simple "Add to Cart" button — no options to pick.
+                    Customers will see a simple &quot;Add to Cart&quot; button — no options to pick.
                   </p>
                 </div>
               )}
@@ -421,7 +446,7 @@ export default function AdminPage() {
                 <>
                   <div className="mb-3">
                     <label className="text-xs text-slate-500 mb-2 block">
-                      What's this option called?
+                      What&apos;s this option called?
                     </label>
                     <input
                       type="text"
@@ -444,7 +469,7 @@ export default function AdminPage() {
                     </div>
                     {optionLabel && (
                       <p className="text-[10px] text-slate-400 mt-2">
-                        Customers will see: <span className="text-slate-600">"Select {optionLabel}"</span>
+                        Customers will see: <span className="text-slate-600">&quot;Select {optionLabel}&quot;</span>
                       </p>
                     )}
                   </div>

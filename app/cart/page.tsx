@@ -4,6 +4,7 @@ import Link from "next/link";
 import { useState } from "react";
 import { ArrowLeft, ShoppingBag, Truck, ChevronDown,ShoppingCart } from "lucide-react";
 import { useCart } from "../components/cartProvider";
+import { supabase } from "../../lib/supabase";
 
 const NIGERIAN_STATES = [
   "Abia", "Adamawa", "Akwa Ibom", "Anambra", "Bauchi", "Bayelsa",
@@ -56,11 +57,6 @@ export default function CartPage() {
   const deliveryFee = getDeliveryFee(form.state);
   const grandTotal = cartTotal + deliveryFee * 100;
 
-  console.log("cartItems", cartItems);
-console.log("cartTotal", cartTotal);
-console.log("deliveryFee", deliveryFee);
-console.log("grandTotal", grandTotal);
-
   const handleChange = (
     e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement>
   ) => {
@@ -82,6 +78,100 @@ console.log("grandTotal", grandTotal);
     setLoading(true);
 
     try {
+      const variantIds = cartItems.map((item) => item.id);
+      const { data: variantRows, error: stockFetchError } = await supabase
+        .from("variants")
+        .select("id, stock")
+        .in("id", variantIds);
+
+      if (stockFetchError) {
+        throw new Error("Could not confirm current stock. Please try again.");
+      }
+
+      const variantStockMap = new Map(
+        (variantRows ?? []).map((variant: any) => [variant.id, Number(variant.stock) || 0])
+      );
+      const insufficientItem = cartItems.find((item) => {
+        const availableStock = variantStockMap.get(item.id) ?? item.max_quantity ?? 0;
+        return availableStock < item.quantity;
+      });
+
+      if (insufficientItem) {
+        const availableStock = variantStockMap.get(insufficientItem.id) ?? 0;
+        alert(
+          `${insufficientItem.name} (${insufficientItem.size}) only has ${availableStock} left in stock.`
+        );
+        setLoading(false);
+        return;
+      }
+
+      const { data: customer, error: customerError } = await supabase
+        .from("customers")
+        .insert({
+          name: form.name,
+          email: form.email,
+          phone: form.phone,
+          whatsapp: form.whatsapp || null,
+          address: form.address,
+          city: form.city || null,
+          state: form.state,
+        })
+        .select()
+        .single();
+
+      if (customerError || !customer) {
+        throw new Error(customerError?.message || "Failed to save customer details.");
+      }
+
+      const { data: order, error: orderError } = await supabase
+        .from("orders")
+        .insert({
+          customer_id: customer.id,
+          subtotal: cartTotal,
+          delivery_fee: deliveryFee * 100,
+          total: grandTotal,
+          status: "pending",
+        })
+        .select()
+        .single();
+
+      if (orderError || !order) {
+        throw new Error(orderError?.message || "Failed to create order.");
+      }
+
+      const orderItems = cartItems.map((item) => ({
+        order_id: order.id,
+        product_id: item.product_id,
+        variant_id: item.id,
+        name: item.name,
+        size: item.size,
+        quantity: item.quantity,
+        price: item.price,
+      }));
+
+      const { error: orderItemsError } = await supabase.from("order_items").insert(orderItems);
+      if (orderItemsError) {
+        throw new Error(orderItemsError.message);
+      }
+
+      for (const item of cartItems) {
+        const currentStock = variantStockMap.get(item.id) ?? 0;
+        const nextStock = currentStock - item.quantity;
+        const { data: updatedStockRow, error: stockUpdateError } = await supabase
+          .from("variants")
+          .update({ stock: nextStock })
+          .eq("id", item.id)
+          .eq("stock", currentStock)
+          .select("id")
+          .maybeSingle();
+
+        if (stockUpdateError || !updatedStockRow) {
+          throw new Error(
+            `${item.name} stock changed while checking out. Please review your cart and try again.`
+          );
+        }
+      }
+
       localStorage.setItem(
         "pendingOrder",
         JSON.stringify({
@@ -90,11 +180,13 @@ console.log("grandTotal", grandTotal);
           subtotal: cartTotal,
           deliveryFee,
           total: grandTotal,
+          orderId: order.id,
         })
       );
       window.location.href = "/pay";
-    } catch {
-      alert("Something went wrong. Please try again!");
+    } catch (error: any) {
+      console.error(error);
+      alert(error?.message || "Something went wrong. Please try again!");
       setLoading(false);
     }
   };

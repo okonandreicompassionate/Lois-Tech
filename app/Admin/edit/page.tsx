@@ -4,6 +4,7 @@ import { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
 import { supabase } from "../../../lib/supabase";
 import { Trash2, Plus, CheckCircle, X, ChevronDown, ChevronUp } from "lucide-react";
+import { clampDiscountPercentage, persistProductDiscount } from "../../../lib/pricing";
 
 const ADMIN_PASSWORD = process.env.NEXT_PUBLIC_ADMIN_PASSWORD ?? "";
 
@@ -21,6 +22,7 @@ type Product = {
   price: number;
   image_url: string;
   category_id: string;
+  discount_percentage?: number | null;
   is_featured: boolean;
   is_commission: boolean;
   variants: Variant[];
@@ -81,6 +83,7 @@ export default function EditProductsPage() {
 
     const parsed: Product[] = (data ?? []).map((p: any) => ({
       ...p,
+      discount_percentage: p.discount_percentage ?? null,
       variants: (p.variants ?? []).map((variant: Variant) => ({
         ...variant,
         client_id: variant.id ?? createRowId(),
@@ -157,6 +160,7 @@ export default function EditProductsPage() {
 
   async function handleSave(id: string) {
     const p = editData[id];
+    const discountPercentage = clampDiscountPercentage(p.discount_percentage);
     setSaving(id);
 
     try {
@@ -216,6 +220,8 @@ export default function EditProductsPage() {
           );
         if (iErr) throw new Error("Failed to save images: " + iErr.message);
       }
+
+      await persistProductDiscount(id, discountPercentage, supabase);
 
       setSaved(id);
       setTimeout(() => setSaved(null), 3000);
@@ -295,6 +301,12 @@ export default function EditProductsPage() {
               className="text-xs tracking-widest uppercase text-zinc-500 hover:text-white transition-colors"
             >
               + Add New
+            </button>
+            <button
+              onClick={() => router.push("/Admin/orders")}
+              className="text-xs tracking-widest uppercase text-zinc-500 hover:text-white transition-colors"
+            >
+              Orders
             </button>
             <button
               onClick={() => router.push("/")}
@@ -430,6 +442,25 @@ export default function EditProductsPage() {
                                 <option key={cat.id} value={cat.id}>{cat.name}</option>
                               ))}
                             </select>
+                          </div>
+
+                          <div className="relative">
+                            <input
+                              type="number"
+                              min={0}
+                              max={100}
+                              placeholder="Discount"
+                              value={ed.discount_percentage ?? ""}
+                              onChange={(e) =>
+                                updateField(
+                                  product.id,
+                                  "discount_percentage",
+                                  e.target.value === "" ? null : clampDiscountPercentage(e.target.value)
+                                )
+                              }
+                              className={`${inputClass} pr-10`}
+                            />
+                            <span className="absolute right-4 top-1/2 -translate-y-1/2 text-zinc-500 text-sm">%</span>
                           </div>
 
                           <label className="flex items-center gap-3 px-4 py-3 bg-zinc-900 border border-zinc-800 rounded-xl cursor-pointer hover:border-zinc-700 transition-colors">

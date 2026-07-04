@@ -5,6 +5,7 @@ import Link from "next/link";
 import { useCart } from "../components/cartProvider";
 import { supabase } from "../../lib/supabase";
 import { ShoppingCart, ChevronDown, Search, X, Menu } from "lucide-react";
+import { formatCurrency, getDiscountPercentage, getDiscountedPrice } from "../../lib/pricing";
 
 type Variant = {
   id: string;
@@ -27,6 +28,7 @@ type Product = {
   is_featured: boolean;
   is_commission: boolean;
   price: number;
+  discount_percentage?: number | null;
   category_id: string;
   categories: Category[] | null;
   variants: Variant[];
@@ -93,8 +95,11 @@ export default function LandingPage() {
     e.preventDefault();
     e.stopPropagation();
 
-    const defaultVariant = product.variants[0];
+    const defaultVariant = product.variants.find((variant) => variant.stock > 0);
     if (!defaultVariant) return;
+
+    const discountPercentage = getDiscountPercentage(product, product.id);
+    const finalPrice = getDiscountedPrice(product.price, discountPercentage);
 
     addToCart({
       id: defaultVariant.id,
@@ -102,8 +107,9 @@ export default function LandingPage() {
       name: product.name,
       image_url: product.image_url,
       size: defaultVariant.option_value,
-      price: product.price,
+      price: finalPrice,
       quantity: 1,
+      max_quantity: defaultVariant.stock,
     });
 
     setAddedId(product.id);
@@ -353,7 +359,11 @@ export default function LandingPage() {
         {!loading && (
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 sm:gap-5">
             {filteredProducts.map((product) => {
-              const optionLabel = product.variants[0]?.option_label ?? "Option";
+              const discountPercentage = getDiscountPercentage(product, product.id);
+              const finalPrice = getDiscountedPrice(product.price, discountPercentage);
+              const isSoldOut =
+                product.variants.length === 0 ||
+                product.variants.every((variant) => variant.stock <= 0);
 
               return (
                 <div
@@ -397,9 +407,16 @@ export default function LandingPage() {
                         Custom pricing on consultation
                       </p>
                     ) : (
-                      <p className="text-base font-semibold text-slate-900">
-                        ₦{(product.price / 100).toLocaleString()}
-                      </p>
+                      <div className="flex items-center gap-2">
+                        <p className="text-base font-semibold text-slate-900">
+                          {formatCurrency(finalPrice)}
+                        </p>
+                        {discountPercentage > 0 && (
+                          <span className="text-xs text-emerald-600 font-medium">
+                            {discountPercentage}% off
+                          </span>
+                        )}
+                      </div>
                     )}
 
                     {/* OPTION PILLS */}
@@ -439,13 +456,20 @@ export default function LandingPage() {
                       ) : (
                         <button
                           onClick={(e) => handleQuickAdd(e, product)}
+                          disabled={isSoldOut}
                           className={`flex-1 py-2.5 text-[11px] tracking-widest uppercase font-semibold rounded-xl transition-all duration-300 ${
-                            addedId === product.id
+                            isSoldOut
+                              ? "bg-slate-200 text-slate-400 cursor-not-allowed"
+                              : addedId === product.id
                               ? "bg-slate-900 text-white"
                               : "bg-slate-100 text-slate-700 hover:bg-slate-900 hover:text-white"
                           }`}
                         >
-                          {addedId === product.id ? "Added ✓" : "Add"}
+                          {isSoldOut
+                            ? "Sold Out"
+                            : addedId === product.id
+                            ? "Added ✓"
+                            : "Add"}
                         </button>
                       )}
                     </div>

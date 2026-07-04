@@ -6,6 +6,7 @@ import Link from "next/link";
 import { ShoppingCart, ChevronRight, ArrowLeft } from "lucide-react";
 import { useCart } from "../../components/cartProvider";
 import { supabase } from "../../../lib/supabase";
+import { formatCurrency, getDiscountPercentage, getDiscountedPrice } from "../../../lib/pricing";
 
 type Variant = {
   id: string;
@@ -26,6 +27,7 @@ type Product = {
   description: string;
   image_url: string;
   price: number;
+  discount_percentage?: number | null;
   is_commission: boolean;
   categories: { name: string }[] | null;
   variants: Variant[];
@@ -83,14 +85,18 @@ export default function ProductPage() {
   const handleAddToCart = () => {
     if (!selectedVariant || !product) return;
 
+    const discountPercentage = getDiscountPercentage(product, product.id);
+    const finalPrice = getDiscountedPrice(product.price, discountPercentage);
+
     addToCart({
       id: selectedVariant.id,
       product_id: product.id,
       name: product.name,
       image_url: product.image_url,
       size: selectedVariant.option_value,
-      price: product.price,
+      price: finalPrice,
       quantity: 1,
+      max_quantity: selectedVariant.stock,
     });
 
     setAdded(true);
@@ -143,6 +149,8 @@ export default function ProductPage() {
       : [{ id: "main", image_url: product.image_url, position: 0 }];
 
   const optionLabel = product.variants[0]?.option_label ?? "Option";
+  const discountPercentage = getDiscountPercentage(product, product.id);
+  const finalPrice = getDiscountedPrice(product.price, discountPercentage);
 
   return (
     <div className="bg-slate-200 min-h-screen text-slate-900 font-titillium">
@@ -272,9 +280,16 @@ export default function ProductPage() {
                     Custom pricing on consultation
                   </p>
                 ) : (
-                  <p className="text-2xl font-semibold text-slate-900">
-                    ₦{(product.price / 100).toLocaleString()}
-                  </p>
+                  <div className="flex items-center gap-2">
+                    <p className="text-2xl font-semibold text-slate-900">
+                      {formatCurrency(finalPrice)}
+                    </p>
+                    {discountPercentage > 0 && (
+                      <span className="text-sm text-emerald-600 font-medium">
+                        {discountPercentage}% off
+                      </span>
+                    )}
+                  </div>
                 )}
               </div>
             </div>

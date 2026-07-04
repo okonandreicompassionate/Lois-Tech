@@ -1,6 +1,6 @@
 "use client";
 
-import { createContext, useContext, useState, useEffect } from "react";
+import { createContext, useContext, useMemo, useState, useEffect } from "react";
 
 interface CartItem {
   id: string;
@@ -10,6 +10,7 @@ interface CartItem {
   size: string;
   price: number;
   quantity: number;
+  max_quantity?: number;
 }
 
 interface CartContextType {
@@ -17,7 +18,7 @@ interface CartContextType {
   addToCart: (item: CartItem) => void;
   removeFromCart: (id: string, size: string) => void;
   updateQuantity: (id: string, size: string, quantity: number) => void;
-  clearCart: () => void;  // ADD THIS LINE
+  clearCart: () => void;
   cartTotal: number;
 }
 
@@ -29,7 +30,11 @@ export function CartProvider({ children }: { children: React.ReactNode }) {
   useEffect(() => {
     const storedCart = localStorage.getItem("exiles-cart");
     if (storedCart) {
-      setCartItems(JSON.parse(storedCart));
+      try {
+        setCartItems(JSON.parse(storedCart));
+      } catch {
+        setCartItems([]);
+      }
     }
   }, []);
 
@@ -38,6 +43,8 @@ export function CartProvider({ children }: { children: React.ReactNode }) {
   }, [cartItems]);
 
   const addToCart = (incomingItem: CartItem) => {
+    const maxAllowed = incomingItem.max_quantity ?? Number.POSITIVE_INFINITY;
+
     setCartItems((prev) => {
       const existing = prev.find(
         (item) =>
@@ -45,11 +52,17 @@ export function CartProvider({ children }: { children: React.ReactNode }) {
           item.size === incomingItem.size
       );
 
+      const nextQuantity = (existing?.quantity ?? 0) + 1;
+      if (nextQuantity > maxAllowed) {
+        alert(`Only ${maxAllowed} available in stock.`);
+        return prev;
+      }
+
       if (existing) {
         return prev.map((item) =>
           item.id === incomingItem.id &&
           item.size === incomingItem.size
-            ? { ...item, quantity: item.quantity + 1 }
+            ? { ...item, quantity: nextQuantity }
             : item
         );
       }
@@ -70,25 +83,37 @@ export function CartProvider({ children }: { children: React.ReactNode }) {
       return;
     }
 
-    setCartItems((prev) =>
-      prev.map((item) =>
+    setCartItems((prev) => {
+      const target = prev.find((item) => item.id === id && item.size === size);
+      const maxAllowed = target?.max_quantity ?? Number.POSITIVE_INFINITY;
+
+      if (quantity > maxAllowed) {
+        alert(`Only ${maxAllowed} available in stock.`);
+        return prev;
+      }
+
+      return prev.map((item) =>
         item.id === id && item.size === size
           ? { ...item, quantity }
           : item
-      )
-    );
+      );
+    });
   };
 
   const clearCart = () => {
     setCartItems([]);
   };
 
-  const cartTotal = cartItems.reduce(
-    (total, item) =>
-      total +
-      (Number(item.price) || 0) *
-      (Number(item.quantity) || 0),
-    0
+  const cartTotal = useMemo(
+    () =>
+      cartItems.reduce(
+        (total, item) =>
+          total +
+          (Number(item.price) || 0) *
+          (Number(item.quantity) || 0),
+        0
+      ),
+    [cartItems]
   );
 
   return (
@@ -98,7 +123,7 @@ export function CartProvider({ children }: { children: React.ReactNode }) {
         addToCart,
         removeFromCart,
         updateQuantity,
-        clearCart,  // ADD THIS LINE
+        clearCart,
         cartTotal,
       }}
     >
