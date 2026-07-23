@@ -56,6 +56,7 @@ export default function ProductPage() {
           description,
           image_url,
           price,
+          discount_percentage,
           is_commission,
           categories ( name ),
           variants ( id, option_label, option_value, stock ),
@@ -280,14 +281,23 @@ export default function ProductPage() {
                     Custom pricing on consultation
                   </p>
                 ) : (
-                  <div className="flex items-center gap-2">
-                    <p className="text-2xl font-semibold text-slate-900">
-                      {formatCurrency(finalPrice)}
-                    </p>
-                    {discountPercentage > 0 && (
-                      <span className="text-sm text-emerald-600 font-medium">
-                        {discountPercentage}% off
-                      </span>
+                  <div className="flex flex-wrap items-center gap-2">
+                    {discountPercentage > 0 ? (
+                      <>
+                        <p className="text-lg text-slate-400 line-through">
+                          {formatCurrency(product.price)}
+                        </p>
+                        <p className="text-2xl font-semibold text-slate-900">
+                          {formatCurrency(finalPrice)}
+                        </p>
+                        <span className="text-sm text-emerald-600 font-medium">
+                          {discountPercentage}% off
+                        </span>
+                      </>
+                    ) : (
+                      <p className="text-2xl font-semibold text-slate-900">
+                        {formatCurrency(finalPrice)}
+                      </p>
                     )}
                   </div>
                 )}

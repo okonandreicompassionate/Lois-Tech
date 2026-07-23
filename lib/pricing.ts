@@ -53,7 +53,8 @@ export function clampDiscountPercentage(value: number | string | null | undefine
 }
 
 export function formatCurrency(amount: number): string {
-  return `₦${Math.max(0, amount).toLocaleString()}`;
+  const valueInNaira = Math.max(0, Math.round(amount / 100));
+  return `₦${valueInNaira.toLocaleString()}`;
 }
 
 export async function persistProductDiscount(

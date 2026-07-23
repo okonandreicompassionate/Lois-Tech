@@ -4,7 +4,7 @@ import { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
 import { supabase } from "../../../lib/supabase";
 import { Trash2, Plus, CheckCircle, X, ChevronDown, ChevronUp } from "lucide-react";
-import { clampDiscountPercentage, persistProductDiscount } from "../../../lib/pricing";
+import { clampDiscountPercentage, formatCurrency, getDiscountedPrice, persistProductDiscount } from "../../../lib/pricing";
 
 const ADMIN_PASSWORD = process.env.NEXT_PUBLIC_ADMIN_PASSWORD ?? "";
 
@@ -73,7 +73,7 @@ export default function EditProductsPage() {
     const { data, error } = await supabase
       .from("products")
       .select(`
-        id, name, description, price, image_url, category_id, is_featured, is_commission,
+        id, name, description, price, discount_percentage, image_url, category_id, is_featured, is_commission,
         variants (id, option_label, option_value, stock),
         product_images (id, image_url, position)
       `)
@@ -170,6 +170,7 @@ export default function EditProductsPage() {
           name: p.name,
           description: p.description,
           price: p.price,
+          discount_percentage: discountPercentage > 0 ? discountPercentage : null,
           image_url: p.image_url,
           category_id: p.category_id,
           is_featured: p.is_featured,
@@ -330,6 +331,8 @@ export default function EditProductsPage() {
           if (!ed) return null;
 
           const currentLabel = ed.variants[0]?.option_label ?? "Color";
+          const discountPercentage = clampDiscountPercentage(ed.discount_percentage);
+          const salePrice = getDiscountedPrice(ed.price, discountPercentage);
 
           return (
             <div
@@ -352,8 +355,19 @@ export default function EditProductsPage() {
 
                 <div className="flex-1 min-w-0">
                   <p className="text-sm text-white font-medium truncate">{product.name}</p>
-                  <p className="text-xs text-zinc-500 mt-0.5">
-                    ₦{(product.price / 100).toLocaleString()} &nbsp;·&nbsp;{" "}
+                  <p className="text-xs text-zinc-500 mt-0.5 flex flex-wrap items-center gap-2">
+                    {discountPercentage > 0 ? (
+                      <>
+                        <span className="line-through text-zinc-500">{formatCurrency(ed.price)}</span>
+                        <span className="text-white">{formatCurrency(salePrice)}</span>
+                        <span className="text-[10px] bg-emerald-400/10 text-emerald-400 px-2 py-0.5 rounded-full">
+                          {discountPercentage}% off
+                        </span>
+                      </>
+                    ) : (
+                      <span>{formatCurrency(ed.price)}</span>
+                    )}
+                    &nbsp;·&nbsp;{" "}
                     {product.variants.length} option{product.variants.length !== 1 ? "s" : ""}
                     {product.is_featured && (
                       <span className="ml-2 text-[10px] bg-white/10 text-zinc-300 px-2 py-0.5 rounded-full">
@@ -461,6 +475,25 @@ export default function EditProductsPage() {
                               className={`${inputClass} pr-10`}
                             />
                             <span className="absolute right-4 top-1/2 -translate-y-1/2 text-zinc-500 text-sm">%</span>
+                          </div>
+
+                          <div className="rounded-xl border border-zinc-800 bg-zinc-900/70 p-3">
+                            <div className="flex items-center justify-between text-[10px] tracking-[0.3em] uppercase text-zinc-500">
+                              <span>Price preview</span>
+                              {discountPercentage > 0 && (
+                                <span className="text-emerald-400">{discountPercentage}% off</span>
+                              )}
+                            </div>
+                            <div className="mt-2 flex items-center gap-2 flex-wrap">
+                              {discountPercentage > 0 ? (
+                                <>
+                                  <span className="text-sm text-zinc-500 line-through">{formatCurrency(ed.price)}</span>
+                                  <span className="text-lg font-semibold text-white">{formatCurrency(salePrice)}</span>
+                                </>
+                              ) : (
+                                <span className="text-lg font-semibold text-white">{formatCurrency(ed.price)}</span>
+                              )}
+                            </div>
                           </div>
 
                           <label className="flex items-center gap-3 px-4 py-3 bg-zinc-900 border border-zinc-800 rounded-xl cursor-pointer hover:border-zinc-700 transition-colors">

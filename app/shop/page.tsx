@@ -56,6 +56,7 @@ export default function LandingPage() {
             is_featured,
             is_commission,
             price,
+            discount_percentage,
             category_id,
             categories ( id, name, slug, description ),
             variants ( id, option_label, option_value, stock )
@@ -407,14 +408,23 @@ export default function LandingPage() {
                         Custom pricing on consultation
                       </p>
                     ) : (
-                      <div className="flex items-center gap-2">
-                        <p className="text-base font-semibold text-slate-900">
-                          {formatCurrency(finalPrice)}
-                        </p>
-                        {discountPercentage > 0 && (
-                          <span className="text-xs text-emerald-600 font-medium">
-                            {discountPercentage}% off
-                          </span>
+                      <div className="flex flex-wrap items-center gap-2">
+                        {discountPercentage > 0 ? (
+                          <>
+                            <p className="text-sm text-slate-400 line-through">
+                              {formatCurrency(product.price)}
+                            </p>
+                            <p className="text-base font-semibold text-slate-900">
+                              {formatCurrency(finalPrice)}
+                            </p>
+                            <span className="text-xs text-emerald-600 font-medium">
+                              {discountPercentage}% off
+                            </span>
+                          </>
+                        ) : (
+                          <p className="text-base font-semibold text-slate-900">
+                            {formatCurrency(finalPrice)}
+                          </p>
                         )}
                       </div>
                     )}
