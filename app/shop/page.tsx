@@ -5,7 +5,11 @@ import Link from "next/link";
 import { useCart } from "../components/cartProvider";
 import { supabase } from "../../lib/supabase";
 import { ShoppingCart, ChevronDown, Search, X, Menu } from "lucide-react";
-import { formatCurrency, getDiscountPercentage, getDiscountedPrice } from "../../lib/pricing";
+import {
+  formatCurrency,
+  getDiscountPercentage,
+  getDiscountedPrice,
+} from "../../lib/pricing";
 
 type Variant = {
   id: string;
@@ -28,6 +32,7 @@ type Product = {
   is_featured: boolean;
   is_commission: boolean;
   price: number;
+  stock: number;
   discount_percentage?: number | null;
   category_id: string;
   categories: Category[] | null;
@@ -46,21 +51,27 @@ export default function LandingPage() {
 
   useEffect(() => {
     async function fetchData() {
-      const [{ data: productData, error: productError }, { data: categoryData }] = await Promise.all([
+      const [
+        { data: productData, error: productError },
+        { data: categoryData },
+      ] = await Promise.all([
         supabase
           .from("products")
-          .select(`
+          .select(
+            `
             id,
             name,
             image_url,
             is_featured,
             is_commission,
             price,
+            stock,
             discount_percentage,
             category_id,
             categories ( id, name, slug, description ),
             variants ( id, option_label, option_value, stock )
-          `)
+          `,
+          )
           .order("created_at", { ascending: false }),
         supabase.from("categories").select("id, name, slug, description"),
       ]);
@@ -96,21 +107,30 @@ export default function LandingPage() {
     e.preventDefault();
     e.stopPropagation();
 
-    const defaultVariant = product.variants.find((variant) => variant.stock > 0);
-    if (!defaultVariant) return;
+    const hasVariants = product.variants.length > 0;
+    const defaultVariant = hasVariants
+      ? product.variants.find((variant) => variant.stock > 0)
+      : null;
+    const availableStock = hasVariants
+      ? (defaultVariant?.stock ?? 0)
+      : product.stock;
+
+    if (!hasVariants && product.stock <= 0) return;
+    if (hasVariants && !defaultVariant) return;
 
     const discountPercentage = getDiscountPercentage(product, product.id);
     const finalPrice = getDiscountedPrice(product.price, discountPercentage);
 
     addToCart({
-      id: defaultVariant.id,
+      id: hasVariants ? defaultVariant!.id : product.id,
       product_id: product.id,
       name: product.name,
       image_url: product.image_url,
-      size: defaultVariant.option_value,
+      size: hasVariants ? defaultVariant!.option_value : "Standard",
       price: finalPrice,
       quantity: 1,
-      max_quantity: defaultVariant.stock,
+      max_quantity: availableStock,
+      is_plain_product: !hasVariants,
     });
 
     setAddedId(product.id);
@@ -129,14 +149,19 @@ export default function LandingPage() {
 
   return (
     <div className="bg-slate-200 min-h-screen text-slate-900 font-titillium">
-
       {/* NAV */}
       <nav className="fixed top-0 left-0 right-0 z-50 bg-slate-200/80 backdrop-blur-xl border-b border-slate-300/60">
         <div className="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8 py-3.5 sm:py-4 flex items-center justify-between gap-3">
           {/* LOGO */}
           <Link href="/" className="flex items-center gap-2 sm:gap-3 min-w-0">
-            <img src="https://i.imgur.com/IGBf9Dh.png" alt="LoisTech" className="h-7 sm:h-8 w-auto flex-shrink-0" />
-            <span className="text-sm sm:text-base font-semibold tracking-tight text-slate-900 truncate">LOIS TECH</span>
+            <img
+              src="https://i.imgur.com/IGBf9Dh.png"
+              alt="LoisTech"
+              className="h-7 sm:h-8 w-auto flex-shrink-0"
+            />
+            <span className="text-sm sm:text-base font-semibold tracking-tight text-slate-900 truncate">
+              LOIS TECH
+            </span>
           </Link>
 
           {/* DESKTOP CATEGORY NAV */}
@@ -146,7 +171,9 @@ export default function LandingPage() {
                 key={cat.id}
                 onClick={() => setActiveFilter(cat.slug)}
                 className={`text-xs font-medium tracking-wide transition-colors whitespace-nowrap ${
-                  activeFilter === cat.slug ? "text-slate-900" : "text-slate-500 hover:text-slate-900"
+                  activeFilter === cat.slug
+                    ? "text-slate-900"
+                    : "text-slate-500 hover:text-slate-900"
                 }`}
               >
                 {cat.name}
@@ -156,9 +183,16 @@ export default function LandingPage() {
 
           {/* RIGHT SIDE — CART + MOBILE MENU */}
           <div className="flex items-center gap-2 sm:gap-4 flex-shrink-0">
-            <Link href="/cart" className="relative flex items-center text-slate-700 hover:text-slate-900 transition-colors p-1">
+            <Link
+              href="/cart"
+              className="relative flex items-center text-slate-700 hover:text-slate-900 transition-colors p-1"
+            >
               <ShoppingCart size={22} className="sm:hidden" strokeWidth={1.5} />
-              <ShoppingCart size={25} className="hidden sm:block" strokeWidth={1.5} />
+              <ShoppingCart
+                size={25}
+                className="hidden sm:block"
+                strokeWidth={1.5}
+              />
               {cartItems.length > 0 && (
                 <span className="absolute -top-1.5 -right-1.5 w-4 h-4 bg-slate-900 text-white text-[10px] rounded-full flex items-center justify-center font-bold">
                   {cartItems.length}
@@ -183,7 +217,9 @@ export default function LandingPage() {
               <button
                 onClick={() => selectFilterAndClose("ALL")}
                 className={`text-left px-3 py-3 rounded-lg text-sm font-medium transition-colors ${
-                  activeFilter === "ALL" ? "bg-white text-slate-900" : "text-slate-600 hover:bg-white/60"
+                  activeFilter === "ALL"
+                    ? "bg-white text-slate-900"
+                    : "text-slate-600 hover:bg-white/60"
                 }`}
               >
                 All Products
@@ -193,7 +229,9 @@ export default function LandingPage() {
                   key={cat.id}
                   onClick={() => selectFilterAndClose(cat.slug)}
                   className={`text-left px-3 py-3 rounded-lg text-sm font-medium transition-colors ${
-                    activeFilter === cat.slug ? "bg-white text-slate-900" : "text-slate-600 hover:bg-white/60"
+                    activeFilter === cat.slug
+                      ? "bg-white text-slate-900"
+                      : "text-slate-600 hover:bg-white/60"
                   }`}
                 >
                   {cat.name}
@@ -222,11 +260,14 @@ export default function LandingPage() {
           </p>
 
           <h2 className="text-3xl sm:text-5xl lg:text-7xl font-semibold leading-none tracking-tight text-white drop-shadow-lg">
-            Intelligent<br />Living
+            Intelligent
+            <br />
+            Living
           </h2>
 
           <p className="text-[9px] sm:text-[10px] lg:text-[11px] tracking-[0.2em] sm:tracking-[0.4em] uppercase text-white mt-4 sm:mt-5 max-w-[280px] sm:max-w-none leading-relaxed">
-            Smart Automation · Security Systems · Acoustic & Interior Integration
+            Smart Automation · Security Systems · Acoustic & Interior
+            Integration
           </p>
         </div>
 
@@ -253,7 +294,9 @@ export default function LandingPage() {
             }`}
           >
             <p className="text-sm font-semibold mb-1">All Products</p>
-            <p className={`text-xs leading-relaxed ${activeFilter === "ALL" ? "text-white/60" : "text-slate-500"}`}>
+            <p
+              className={`text-xs leading-relaxed ${activeFilter === "ALL" ? "text-white/60" : "text-slate-500"}`}
+            >
               Browse the full collection
             </p>
           </button>
@@ -271,7 +314,9 @@ export default function LandingPage() {
                 }`}
               >
                 <p className="text-sm font-semibold mb-1">{cat.name}</p>
-                <p className={`text-xs leading-relaxed line-clamp-2 ${isActive ? "text-white/60" : "text-slate-500"}`}>
+                <p
+                  className={`text-xs leading-relaxed line-clamp-2 ${isActive ? "text-white/60" : "text-slate-500"}`}
+                >
                   {cat.description}
                 </p>
               </button>
@@ -287,10 +332,12 @@ export default function LandingPage() {
 
       {/* PRODUCTS SECTION */}
       <div className="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8 py-8 sm:py-12 pb-16 sm:pb-20">
-
         {/* SEARCH BAR */}
         <div className="relative mb-5 sm:mb-6">
-          <Search size={16} className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-400 pointer-events-none" />
+          <Search
+            size={16}
+            className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-400 pointer-events-none"
+          />
           <input
             type="text"
             value={searchQuery}
@@ -314,13 +361,15 @@ export default function LandingPage() {
               {searchQuery
                 ? `Results for "${searchQuery}"`
                 : activeFilter === "ALL"
-                ? "All Products"
-                : activeFilter === "FEATURED"
-                ? "Featured"
-                : categories.find((c) => c.slug === activeFilter)?.name ?? "Products"}
+                  ? "All Products"
+                  : activeFilter === "FEATURED"
+                    ? "Featured"
+                    : (categories.find((c) => c.slug === activeFilter)?.name ??
+                      "Products")}
             </h2>
             <p className="text-xs text-slate-500 mt-1">
-              {filteredProducts.length} {filteredProducts.length === 1 ? "item" : "items"}
+              {filteredProducts.length}{" "}
+              {filteredProducts.length === 1 ? "item" : "items"}
             </p>
           </div>
 
@@ -333,10 +382,15 @@ export default function LandingPage() {
               <option value="ALL">All</option>
               <option value="FEATURED">Featured</option>
               {categories.map((cat) => (
-                <option key={cat.id} value={cat.slug}>{cat.name}</option>
+                <option key={cat.id} value={cat.slug}>
+                  {cat.name}
+                </option>
               ))}
             </select>
-            <ChevronDown size={11} className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-500 pointer-events-none" />
+            <ChevronDown
+              size={11}
+              className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-500 pointer-events-none"
+            />
           </div>
         </div>
 
@@ -344,7 +398,10 @@ export default function LandingPage() {
         {loading && (
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 sm:gap-5">
             {[...Array(6)].map((_, i) => (
-              <div key={i} className="bg-white rounded-2xl overflow-hidden animate-pulse border border-slate-200">
+              <div
+                key={i}
+                className="bg-white rounded-2xl overflow-hidden animate-pulse border border-slate-200"
+              >
                 <div className="aspect-square bg-slate-100" />
                 <div className="p-4 space-y-2.5">
                   <div className="h-2.5 bg-slate-100 rounded-full w-3/4" />
@@ -360,11 +417,18 @@ export default function LandingPage() {
         {!loading && (
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 sm:gap-5">
             {filteredProducts.map((product) => {
-              const discountPercentage = getDiscountPercentage(product, product.id);
-              const finalPrice = getDiscountedPrice(product.price, discountPercentage);
+              const discountPercentage = getDiscountPercentage(
+                product,
+                product.id,
+              );
+              const finalPrice = getDiscountedPrice(
+                product.price,
+                discountPercentage,
+              );
               const isSoldOut =
-                product.variants.length === 0 ||
-                product.variants.every((variant) => variant.stock <= 0);
+                (product.variants.length === 0 && product.stock <= 0) ||
+                (product.variants.length > 0 &&
+                  product.variants.every((variant) => variant.stock <= 0));
 
               return (
                 <div
@@ -471,15 +535,15 @@ export default function LandingPage() {
                             isSoldOut
                               ? "bg-slate-200 text-slate-400 cursor-not-allowed"
                               : addedId === product.id
-                              ? "bg-slate-900 text-white"
-                              : "bg-slate-100 text-slate-700 hover:bg-slate-900 hover:text-white"
+                                ? "bg-slate-900 text-white"
+                                : "bg-slate-100 text-slate-700 hover:bg-slate-900 hover:text-white"
                           }`}
                         >
                           {isSoldOut
                             ? "Sold Out"
                             : addedId === product.id
-                            ? "Added ✓"
-                            : "Add"}
+                              ? "Added ✓"
+                              : "Add"}
                         </button>
                       )}
                     </div>
@@ -518,8 +582,9 @@ export default function LandingPage() {
             Looking for something fully custom?
           </h2>
           <p className="text-sm text-white/60 max-w-xl mx-auto mb-7 sm:mb-8 leading-relaxed">
-            Acoustic Engineering and Interior Design pieces are tailored entirely
-            to your space and aesthetic. Request a consultation to begin.
+            Acoustic Engineering and Interior Design pieces are tailored
+            entirely to your space and aesthetic. Request a consultation to
+            begin.
           </p>
           <Link
             target="_blank"
@@ -535,22 +600,34 @@ export default function LandingPage() {
       <footer className="bg-slate-300">
         <div className="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8 py-10 sm:py-14">
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-8 sm:gap-10">
-
             <div className="col-span-1 sm:col-span-2 lg:col-span-1">
               <div className="flex items-center gap-2 mb-4">
-                <img src="https://i.imgur.com/IGBf9Dh.png" alt="LoisTech" className="h-7 w-auto" />
-                <span className="text-sm font-semibold tracking-tight text-slate-900">LOIS TECH</span>
+                <img
+                  src="https://i.imgur.com/IGBf9Dh.png"
+                  alt="LoisTech"
+                  className="h-7 w-auto"
+                />
+                <span className="text-sm font-semibold tracking-tight text-slate-900">
+                  LOIS TECH
+                </span>
               </div>
               <p className="text-xs text-slate-500 leading-relaxed">
-                Privacy-first, build-integrated smart infrastructure for modern living.
+                Privacy-first, build-integrated smart infrastructure for modern
+                living.
               </p>
             </div>
 
             <div>
-              <p className="text-[10px] tracking-[0.3em] uppercase text-slate-500 mb-4">Shop</p>
+              <p className="text-[10px] tracking-[0.3em] uppercase text-slate-500 mb-4">
+                Shop
+              </p>
               <ul className="space-y-2.5 text-xs text-slate-600">
                 {categories.map((cat) => (
-                  <li key={cat.id} onClick={() => setActiveFilter(cat.slug)} className="hover:text-slate-900 cursor-pointer transition-colors">
+                  <li
+                    key={cat.id}
+                    onClick={() => setActiveFilter(cat.slug)}
+                    className="hover:text-slate-900 cursor-pointer transition-colors"
+                  >
                     {cat.name}
                   </li>
                 ))}
@@ -558,32 +635,100 @@ export default function LandingPage() {
             </div>
 
             <div>
-              <p className="text-[10px] tracking-[0.3em] uppercase text-slate-500 mb-4">Company</p>
+              <p className="text-[10px] tracking-[0.3em] uppercase text-slate-500 mb-4">
+                Company
+              </p>
               <ul className="space-y-2.5 text-xs text-slate-600">
-                <li><Link target="_blank" href="http://loistech.com.ng/#us" className="hover:text-slate-900 transition-colors">About</Link></li>
-                <li><Link target="_blank" href="http://loistech.com.ng/#testimonies" className="hover:text-slate-900 transition-colors">Testimonials</Link></li>
-                <li><Link target="_blank" href="http://loistech.com.ng/#hiring" className="hover:text-slate-900 transition-colors">Careers</Link></li>
+                <li>
+                  <Link
+                    target="_blank"
+                    href="http://loistech.com.ng/#us"
+                    className="hover:text-slate-900 transition-colors"
+                  >
+                    About
+                  </Link>
+                </li>
+                <li>
+                  <Link
+                    target="_blank"
+                    href="http://loistech.com.ng/#testimonies"
+                    className="hover:text-slate-900 transition-colors"
+                  >
+                    Testimonials
+                  </Link>
+                </li>
+                <li>
+                  <Link
+                    target="_blank"
+                    href="http://loistech.com.ng/#hiring"
+                    className="hover:text-slate-900 transition-colors"
+                  >
+                    Careers
+                  </Link>
+                </li>
               </ul>
             </div>
 
             {/* TRUST & POLICIES */}
             <div>
-              <p className="text-[10px] tracking-[0.3em] uppercase text-slate-500 mb-4">Trust & Policies</p>
+              <p className="text-[10px] tracking-[0.3em] uppercase text-slate-500 mb-4">
+                Trust & Policies
+              </p>
               <ul className="space-y-2.5 text-xs text-slate-600">
-                <li><Link href="/policies/sop" className="hover:text-slate-900 transition-colors">4-Phase SOP Summary</Link></li>
-                <li><Link target="_blank" href="https://loistech.com.ng/privacy.html" className="hover:text-slate-900 transition-colors">Privacy Policy</Link></li>
-                <li><Link target="_blank" href="https://loistech.com.ng/tc.html" className="hover:text-slate-900 transition-colors">Terms & Conditions</Link></li>
+                <li>
+                  <Link
+                    href="/policies/sop"
+                    className="hover:text-slate-900 transition-colors"
+                  >
+                    4-Phase SOP Summary
+                  </Link>
+                </li>
+                <li>
+                  <Link
+                    target="_blank"
+                    href="https://loistech.com.ng/privacy.html"
+                    className="hover:text-slate-900 transition-colors"
+                  >
+                    Privacy Policy
+                  </Link>
+                </li>
+                <li>
+                  <Link
+                    target="_blank"
+                    href="https://loistech.com.ng/tc.html"
+                    className="hover:text-slate-900 transition-colors"
+                  >
+                    Terms & Conditions
+                  </Link>
+                </li>
               </ul>
             </div>
-
           </div>
 
           <div className="border-t border-slate-200/60 mt-10 sm:mt-12 pt-6 flex flex-col sm:flex-row justify-between items-center gap-4 text-[10px] text-slate-500 tracking-widest uppercase">
             <p>© {new Date().getFullYear()} LoisTech. All rights reserved.</p>
             <div className="flex gap-6">
-              <a href="https://www.instagram.com/l0istech?igsh=NzczbDQ4d2RheGx2" target="_blank" className="hover:text-slate-900 cursor-pointer transition-colors">Instagram</a>
-              <a href="https://www.facebook.com/share/1GgpCW8D73/" target="_blank" className="hover:text-slate-900 cursor-pointer transition-colors">Facebook</a>
-              <a href="https://ng.linkedin.com/in/lois-tech-491a15380" target="_blank" className="hover:text-slate-900 cursor-pointer transition-colors">LinkedIn</a>
+              <a
+                href="https://www.instagram.com/l0istech?igsh=NzczbDQ4d2RheGx2"
+                target="_blank"
+                className="hover:text-slate-900 cursor-pointer transition-colors"
+              >
+                Instagram
+              </a>
+              <a
+                href="https://www.facebook.com/share/1GgpCW8D73/"
+                target="_blank"
+                className="hover:text-slate-900 cursor-pointer transition-colors"
+              >
+                Facebook
+              </a>
+              <a
+                href="https://ng.linkedin.com/in/lois-tech-491a15380"
+                target="_blank"
+                className="hover:text-slate-900 cursor-pointer transition-colors"
+              >
+                LinkedIn
+              </a>
             </div>
           </div>
         </div>

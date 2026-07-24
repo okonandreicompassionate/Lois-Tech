@@ -22,7 +22,7 @@ export function getStoredDiscounts(): Record<string, number> {
 
 export function getDiscountPercentage(
   product: DiscountableProduct | null | undefined,
-  productId?: string
+  productId?: string,
 ): number {
   const storedDiscounts = getStoredDiscounts();
   const localValue = productId ? storedDiscounts[productId] : undefined;
@@ -39,14 +39,16 @@ export function getDiscountPercentage(
 
 export function getDiscountedPrice(
   price: number,
-  discountPercentage: number | null | undefined
+  discountPercentage: number | null | undefined,
 ): number {
   const percentage = Number(discountPercentage ?? 0);
   if (!Number.isFinite(percentage) || percentage <= 0) return Math.round(price);
   return Math.max(0, Math.round(price * (1 - percentage / 100)));
 }
 
-export function clampDiscountPercentage(value: number | string | null | undefined): number {
+export function clampDiscountPercentage(
+  value: number | string | null | undefined,
+): number {
   const percentage = Number(value ?? 0);
   if (!Number.isFinite(percentage)) return 0;
   return Math.max(0, Math.min(100, Math.round(percentage)));
@@ -60,7 +62,7 @@ export function formatCurrency(amount: number): string {
 export async function persistProductDiscount(
   productId: string,
   discountPercentage: number,
-  supabaseClient?: any
+  supabaseClient?: any,
 ) {
   const safeDiscount = clampDiscountPercentage(discountPercentage);
 
@@ -71,7 +73,10 @@ export async function persistProductDiscount(
     } else {
       delete storedDiscounts[productId];
     }
-    window.localStorage.setItem(DISCOUNT_STORAGE_KEY, JSON.stringify(storedDiscounts));
+    window.localStorage.setItem(
+      DISCOUNT_STORAGE_KEY,
+      JSON.stringify(storedDiscounts),
+    );
   }
 
   if (!supabaseClient) return;

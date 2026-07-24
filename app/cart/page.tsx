@@ -2,17 +2,52 @@
 
 import Link from "next/link";
 import { useState } from "react";
-import { ArrowLeft, ShoppingBag, Truck, ChevronDown,ShoppingCart } from "lucide-react";
+import {
+  ArrowLeft,
+  ShoppingBag,
+  Truck,
+  ChevronDown,
+  ShoppingCart,
+} from "lucide-react";
 import { useCart } from "../components/cartProvider";
 import { supabase } from "../../lib/supabase";
 
 const NIGERIAN_STATES = [
-  "Abia", "Adamawa", "Akwa Ibom", "Anambra", "Bauchi", "Bayelsa",
-  "Benue", "Borno", "Cross River", "Delta", "Ebonyi", "Edo",
-  "Ekiti", "Enugu", "Gombe", "Imo", "Jigawa", "Kaduna", "Kano",
-  "Katsina", "Kebbi", "Kogi", "Kwara", "Nasarawa", "Niger",
-  "Ogun", "Ondo", "Osun", "Oyo", "Plateau", "Rivers",
-  "Sokoto", "Taraba", "Yobe", "Zamfara",
+  "Abia",
+  "Adamawa",
+  "Akwa Ibom",
+  "Anambra",
+  "Bauchi",
+  "Bayelsa",
+  "Benue",
+  "Borno",
+  "Cross River",
+  "Delta",
+  "Ebonyi",
+  "Edo",
+  "Ekiti",
+  "Enugu",
+  "Gombe",
+  "Imo",
+  "Jigawa",
+  "Kaduna",
+  "Kano",
+  "Katsina",
+  "Kebbi",
+  "Kogi",
+  "Kwara",
+  "Nasarawa",
+  "Niger",
+  "Ogun",
+  "Ondo",
+  "Osun",
+  "Oyo",
+  "Plateau",
+  "Rivers",
+  "Sokoto",
+  "Taraba",
+  "Yobe",
+  "Zamfara",
 ];
 
 const EXPRESS_STATES = ["Lagos", "Abuja", "Rivers"];
@@ -58,7 +93,7 @@ export default function CartPage() {
   const grandTotal = cartTotal + deliveryFee * 100;
 
   const handleChange = (
-    e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement>
+    e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement>,
   ) => {
     setForm({ ...form, [e.target.name]: e.target.value });
   };
@@ -78,28 +113,60 @@ export default function CartPage() {
     setLoading(true);
 
     try {
-      const variantIds = cartItems.map((item) => item.id);
+      const variantIds = cartItems
+        .filter((item) => !item.is_plain_product)
+        .map((item) => item.id);
+      const productIds = cartItems
+        .filter((item) => item.is_plain_product)
+        .map((item) => item.product_id);
+
       const { data: variantRows, error: stockFetchError } = await supabase
         .from("variants")
         .select("id, stock")
         .in("id", variantIds);
+
+      let productStockMap = new Map<string, number>();
+      if (productIds.length > 0) {
+        const { data: productRows, error: productStockError } = await supabase
+          .from("products")
+          .select("id, stock")
+          .in("id", productIds);
+
+        if (productStockError) {
+          throw new Error("Could not confirm current stock. Please try again.");
+        }
+
+        productStockMap = new Map(
+          (productRows ?? []).map((product: any) => [
+            product.id,
+            Number(product.stock) || 0,
+          ]),
+        );
+      }
 
       if (stockFetchError) {
         throw new Error("Could not confirm current stock. Please try again.");
       }
 
       const variantStockMap = new Map(
-        (variantRows ?? []).map((variant: any) => [variant.id, Number(variant.stock) || 0])
+        (variantRows ?? []).map((variant: any) => [
+          variant.id,
+          Number(variant.stock) || 0,
+        ]),
       );
       const insufficientItem = cartItems.find((item) => {
-        const availableStock = variantStockMap.get(item.id) ?? item.max_quantity ?? 0;
+        const availableStock = item.is_plain_product
+          ? (productStockMap.get(item.product_id) ?? item.max_quantity ?? 0)
+          : (variantStockMap.get(item.id) ?? item.max_quantity ?? 0);
         return availableStock < item.quantity;
       });
 
       if (insufficientItem) {
-        const availableStock = variantStockMap.get(insufficientItem.id) ?? 0;
+        const availableStock = insufficientItem.is_plain_product
+          ? (productStockMap.get(insufficientItem.product_id) ?? 0)
+          : (variantStockMap.get(insufficientItem.id) ?? 0);
         alert(
-          `${insufficientItem.name} (${insufficientItem.size}) only has ${availableStock} left in stock.`
+          `${insufficientItem.name} (${insufficientItem.size}) only has ${availableStock} left in stock.`,
         );
         setLoading(false);
         return;
@@ -120,7 +187,9 @@ export default function CartPage() {
         .single();
 
       if (customerError || !customer) {
-        throw new Error(customerError?.message || "Failed to save customer details.");
+        throw new Error(
+          customerError?.message || "Failed to save customer details.",
+        );
       }
 
       const { data: order, error: orderError } = await supabase
@@ -142,33 +211,56 @@ export default function CartPage() {
       const orderItems = cartItems.map((item) => ({
         order_id: order.id,
         product_id: item.product_id,
-        variant_id: item.id,
+        variant_id: item.is_plain_product ? null : item.id,
         name: item.name,
         size: item.size,
         quantity: item.quantity,
         price: item.price,
       }));
 
-      const { error: orderItemsError } = await supabase.from("order_items").insert(orderItems);
+      const { error: orderItemsError } = await supabase
+        .from("order_items")
+        .insert(orderItems);
       if (orderItemsError) {
         throw new Error(orderItemsError.message);
       }
 
       for (const item of cartItems) {
-        const currentStock = variantStockMap.get(item.id) ?? 0;
+        const currentStock = item.is_plain_product
+          ? (productStockMap.get(item.product_id) ?? 0)
+          : (variantStockMap.get(item.id) ?? 0);
         const nextStock = currentStock - item.quantity;
-        const { data: updatedStockRow, error: stockUpdateError } = await supabase
-          .from("variants")
-          .update({ stock: nextStock })
-          .eq("id", item.id)
-          .eq("stock", currentStock)
-          .select("id")
-          .maybeSingle();
 
-        if (stockUpdateError || !updatedStockRow) {
-          throw new Error(
-            `${item.name} stock changed while checking out. Please review your cart and try again.`
-          );
+        if (item.is_plain_product) {
+          const { data: updatedStockRow, error: stockUpdateError } =
+            await supabase
+              .from("products")
+              .update({ stock: nextStock })
+              .eq("id", item.product_id)
+              .eq("stock", currentStock)
+              .select("id")
+              .maybeSingle();
+
+          if (stockUpdateError || !updatedStockRow) {
+            throw new Error(
+              `${item.name} stock changed while checking out. Please review your cart and try again.`,
+            );
+          }
+        } else {
+          const { data: updatedStockRow, error: stockUpdateError } =
+            await supabase
+              .from("variants")
+              .update({ stock: nextStock })
+              .eq("id", item.id)
+              .eq("stock", currentStock)
+              .select("id")
+              .maybeSingle();
+
+          if (stockUpdateError || !updatedStockRow) {
+            throw new Error(
+              `${item.name} stock changed while checking out. Please review your cart and try again.`,
+            );
+          }
         }
       }
 
@@ -181,7 +273,7 @@ export default function CartPage() {
           deliveryFee,
           total: grandTotal,
           orderId: order.id,
-        })
+        }),
       );
       window.location.href = "/pay";
     } catch (error: any) {
@@ -217,7 +309,6 @@ export default function CartPage() {
   // ── MAIN CART ──────────────────────────────────────────────────────────────
   return (
     <div className="min-h-screen bg-slate-200 text-slate-900 font-titillium">
-
       {/* NAV */}
       <nav className="sticky top-0 z-50 bg-slate-200/80 backdrop-blur-xl border-b border-slate-300/60">
         <div className="max-w-5xl mx-auto px-4 sm:px-8 py-4 flex items-center justify-between">
@@ -257,7 +348,7 @@ export default function CartPage() {
                 : "text-slate-400"
             }`}
           >
-            <ShoppingCart size={11}  />
+            <ShoppingCart size={11} />
             Cart
           </button>
           <button
@@ -276,10 +367,8 @@ export default function CartPage() {
 
       <div className="max-w-5xl mx-auto px-4 sm:px-8 py-8 pb-32 lg:pb-12">
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
-
           {/* LEFT COLUMN */}
           <div className="lg:col-span-2 space-y-6">
-
             {/* STEP 1 — BAG */}
             {step === "bag" && (
               <div>
@@ -317,7 +406,11 @@ export default function CartPage() {
                             </p>
                           </div>
                           <span className="text-sm font-semibold text-slate-900 flex-shrink-0">
-                            ₦{((item.price * item.quantity) / 100).toLocaleString()}
+                            ₦
+                            {(
+                              (item.price * item.quantity) /
+                              100
+                            ).toLocaleString()}
                           </span>
                         </div>
 
@@ -327,7 +420,11 @@ export default function CartPage() {
                             <button
                               onClick={() =>
                                 item.quantity > 1
-                                  ? updateQuantity(item.id, item.size, item.quantity - 1)
+                                  ? updateQuantity(
+                                      item.id,
+                                      item.size,
+                                      item.quantity - 1,
+                                    )
                                   : removeFromCart(item.id, item.size)
                               }
                               className="w-9 h-9 flex items-center justify-center text-slate-500 hover:text-slate-900 hover:bg-slate-200 transition-colors text-lg leading-none"
@@ -339,7 +436,11 @@ export default function CartPage() {
                             </span>
                             <button
                               onClick={() =>
-                                updateQuantity(item.id, item.size, item.quantity + 1)
+                                updateQuantity(
+                                  item.id,
+                                  item.size,
+                                  item.quantity + 1,
+                                )
                               }
                               className="w-9 h-9 flex items-center justify-center text-slate-500 hover:text-slate-900 hover:bg-slate-200 transition-colors text-lg leading-none"
                             >
@@ -377,7 +478,6 @@ export default function CartPage() {
                   Delivery Details
                 </p>
                 <div className="space-y-3">
-
                   <input
                     type="text"
                     name="name"
@@ -451,7 +551,9 @@ export default function CartPage() {
                         </optgroup>
                         <optgroup label="Standard ₦11,500">
                           {NIGERIAN_STATES.map((s) => (
-                            <option key={s} value={s}>{s}</option>
+                            <option key={s} value={s}>
+                              {s}
+                            </option>
                           ))}
                         </optgroup>
                       </select>
@@ -465,13 +567,16 @@ export default function CartPage() {
                   {/* DELIVERY TAG */}
                   {form.state && (
                     <div className="flex items-center gap-3 px-4 py-3 bg-white rounded-xl border border-slate-200 shadow-sm">
-                      <Truck size={14} strokeWidth={1.5} className="text-slate-400 flex-shrink-0" />
+                      <Truck
+                        size={14}
+                        strokeWidth={1.5}
+                        className="text-slate-400 flex-shrink-0"
+                      />
                       <p className="text-xs text-slate-600">
                         {getDeliveryLabel(form.state)}
                       </p>
                     </div>
                   )}
-
                 </div>
               </div>
             )}
@@ -537,7 +642,10 @@ export default function CartPage() {
 
               <p className="text-slate-400 text-[10px] tracking-wide text-center">
                 Fill all required fields before paying.{" "}
-                <Link href="/policies/returns" className="text-slate-600 hover:text-slate-900 underline underline-offset-2">
+                <Link
+                  href="/policies/returns"
+                  className="text-slate-600 hover:text-slate-900 underline underline-offset-2"
+                >
                   Returns Policy
                 </Link>
               </p>
@@ -550,14 +658,15 @@ export default function CartPage() {
               </Link>
             </div>
           </div>
-
         </div>
       </div>
 
       {/* MOBILE FIXED BOTTOM CTA */}
       <div className="fixed bottom-0 left-0 right-0 p-4 bg-slate-200/95 backdrop-blur-xl border-t border-slate-300/60 lg:hidden">
         <div className="flex items-center justify-between mb-3">
-          <span className="text-xs text-slate-500 uppercase tracking-widest">Total</span>
+          <span className="text-xs text-slate-500 uppercase tracking-widest">
+            Total
+          </span>
           <span className="text-sm font-semibold text-slate-900">
             ₦{(grandTotal / 100).toLocaleString()}
           </span>
@@ -574,11 +683,10 @@ export default function CartPage() {
           {loading
             ? "Redirecting..."
             : step === "bag"
-            ? "Continue to Delivery"
-            : "Proceed to Payment"}
+              ? "Continue to Delivery"
+              : "Proceed to Payment"}
         </button>
       </div>
-
     </div>
   );
 }
