@@ -66,6 +66,7 @@ export default function LandingPage() {
             is_featured,
             is_commission,
             price,
+            stock,
             category_id,
             categories ( id, name, slug, description ),
             variants ( id, option_label, option_value, stock )
