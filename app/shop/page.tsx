@@ -116,23 +116,26 @@ export default function LandingPage() {
     e.preventDefault();
     e.stopPropagation();
 
-    const defaultVariant = product.variants.find(
-      (variant) => variant.stock > 0,
-    );
-    if (!defaultVariant) return;
+    const hasVariants = product.variants.length > 0;
+    const defaultVariant = hasVariants
+      ? product.variants.find((variant) => variant.stock > 0)
+      : null;
+
+    if (hasVariants && !defaultVariant) return;
+    if (!hasVariants && product.stock <= 0) return;
 
     const discountPercentage = getDiscountPercentage(product, product.id);
     const finalPrice = getDiscountedPrice(product.price, discountPercentage);
 
     addToCart({
-      id: defaultVariant.id,
+      id: hasVariants ? defaultVariant!.id : product.id,
       product_id: product.id,
       name: product.name,
       image_url: product.image_url,
-      size: defaultVariant.option_value,
+      size: hasVariants ? defaultVariant!.option_value : "Standard",
       price: finalPrice,
       quantity: 1,
-      max_quantity: defaultVariant.stock,
+      max_quantity: hasVariants ? defaultVariant!.stock : product.stock,
     });
 
     setAddedId(product.id);
