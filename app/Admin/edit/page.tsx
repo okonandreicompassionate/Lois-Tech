@@ -3,20 +3,8 @@
 import { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
 import { supabase } from "../../../lib/supabase";
-import {
-  Trash2,
-  Plus,
-  CheckCircle,
-  X,
-  ChevronDown,
-  ChevronUp,
-} from "lucide-react";
-import {
-  clampDiscountPercentage,
-  formatCurrency,
-  getDiscountedPrice,
-  persistProductDiscount,
-} from "../../../lib/pricing";
+import { Trash2, Plus, CheckCircle, X, ChevronDown, ChevronUp } from "lucide-react";
+import { clampDiscountPercentage, persistProductDiscount } from "../../../lib/pricing";
 
 const ADMIN_PASSWORD = process.env.NEXT_PUBLIC_ADMIN_PASSWORD ?? "";
 
@@ -24,19 +12,8 @@ const inputClass =
   "w-full bg-zinc-900 border border-zinc-800 text-white text-sm px-4 py-3 rounded-xl outline-none focus:border-zinc-600 transition-colors placeholder-zinc-600";
 
 type Category = { id: string; name: string; slug: string };
-type Variant = {
-  id?: string;
-  client_id?: string;
-  option_label: string;
-  option_value: string;
-  stock: number;
-};
-type ProductImage = {
-  id?: string;
-  client_id?: string;
-  image_url: string;
-  position: number;
-};
+type Variant = { id?: string; client_id?: string; option_label: string; option_value: string; stock: number };
+type ProductImage = { id?: string; client_id?: string; image_url: string; position: number };
 
 type Product = {
   id: string;
@@ -46,10 +23,8 @@ type Product = {
   image_url: string;
   category_id: string;
   discount_percentage?: number | null;
-  stock: number;
   is_featured: boolean;
   is_commission: boolean;
-  is_plain_product: boolean;
   variants: Variant[];
   product_images: ProductImage[];
 };
@@ -97,25 +72,18 @@ export default function EditProductsPage() {
   async function fetchProducts() {
     const { data, error } = await supabase
       .from("products")
-      .select(
-        `
-        id, name, description, price, discount_percentage, image_url, category_id, stock, is_featured, is_commission,
+      .select(`
+        id, name, description, price, image_url, category_id, is_featured, is_commission,
         variants (id, option_label, option_value, stock),
         product_images (id, image_url, position)
-      `,
-      )
+      `)
       .order("created_at", { ascending: false });
 
-    if (error) {
-      alert("Failed to load products: " + error.message);
-      return;
-    }
+    if (error) { alert("Failed to load products: " + error.message); return; }
 
     const parsed: Product[] = (data ?? []).map((p: any) => ({
       ...p,
       discount_percentage: p.discount_percentage ?? null,
-      stock: Number(p.stock ?? 0),
-      is_plain_product: (p.variants ?? []).length === 0,
       variants: (p.variants ?? []).map((variant: Variant) => ({
         ...variant,
         client_id: variant.id ?? createRowId(),
@@ -132,9 +100,7 @@ export default function EditProductsPage() {
     setProducts(parsed);
 
     const seed: Record<string, Product> = {};
-    parsed.forEach((p) => {
-      seed[p.id] = JSON.parse(JSON.stringify(p));
-    });
+    parsed.forEach((p) => { seed[p.id] = JSON.parse(JSON.stringify(p)); });
     setEditData(seed);
   }
 
@@ -146,12 +112,7 @@ export default function EditProductsPage() {
     setEditData((prev) => ({ ...prev, [id]: { ...prev[id], [field]: value } }));
   }
 
-  function updateVariant(
-    productId: string,
-    idx: number,
-    field: keyof Variant,
-    value: string | number,
-  ) {
+  function updateVariant(productId: string, idx: number, field: keyof Variant, value: string | number) {
     const variants = [...editData[productId].variants];
     variants[idx] = { ...variants[idx], [field]: value };
     updateField(productId, "variants", variants);
@@ -162,12 +123,7 @@ export default function EditProductsPage() {
     const label = variants[0]?.option_label ?? "Color";
     updateField(productId, "variants", [
       ...variants,
-      {
-        client_id: createRowId(),
-        option_label: label,
-        option_value: "",
-        stock: 0,
-      },
+      { client_id: createRowId(), option_label: label, option_value: "", stock: 0 },
     ]);
   }
 
@@ -177,27 +133,8 @@ export default function EditProductsPage() {
   }
 
   function updateAllOptionLabels(productId: string, label: string) {
-    const variants = editData[productId].variants.map((v) => ({
-      ...v,
-      option_label: label,
-    }));
+    const variants = editData[productId].variants.map((v) => ({ ...v, option_label: label }));
     updateField(productId, "variants", variants);
-  }
-
-  function togglePlainProduct(productId: string, plain: boolean) {
-    updateField(productId, "is_plain_product", plain);
-
-    if (!plain && editData[productId].variants.length === 0) {
-      const label = editData[productId].variants[0]?.option_label ?? "Color";
-      updateField(productId, "variants", [
-        {
-          client_id: createRowId(),
-          option_label: label,
-          option_value: "",
-          stock: 0,
-        },
-      ]);
-    }
   }
 
   function updateImageUrl(productId: string, idx: number, url: string) {
@@ -233,11 +170,8 @@ export default function EditProductsPage() {
           name: p.name,
           description: p.description,
           price: p.price,
-          discount_percentage:
-            discountPercentage > 0 ? discountPercentage : null,
           image_url: p.image_url,
           category_id: p.category_id,
-          stock: p.is_plain_product ? Math.max(0, Number(p.stock) || 0) : 0,
           is_featured: p.is_featured,
           is_commission: p.is_commission,
         })
@@ -248,44 +182,42 @@ export default function EditProductsPage() {
         .from("variants")
         .delete()
         .eq("product_id", id);
-      if (delVErr)
-        throw new Error("Failed to clear variants: " + delVErr.message);
+      if (delVErr) throw new Error("Failed to clear variants: " + delVErr.message);
 
-      if (!p.is_plain_product) {
-        const validVariants = p.variants.filter(
-          (v) => v.option_value.trim() !== "",
-        );
-        if (validVariants.length > 0) {
-          const { error: vErr } = await supabase.from("variants").insert(
+      const validVariants = p.variants.filter((v) => v.option_value.trim() !== "");
+      if (validVariants.length > 0) {
+        const { error: vErr } = await supabase
+          .from("variants")
+          .insert(
             validVariants.map((v) => ({
               product_id: id,
               option_label: v.option_label,
               option_value: v.option_value,
               stock: v.stock,
-            })),
+            }))
           );
-          if (vErr) throw new Error("Failed to save variants: " + vErr.message);
-        }
+        if (vErr) throw new Error("Failed to save variants: " + vErr.message);
       }
 
       const { error: delIErr } = await supabase
         .from("product_images")
         .delete()
         .eq("product_id", id);
-      if (delIErr)
-        throw new Error("Failed to clear images: " + delIErr.message);
+      if (delIErr) throw new Error("Failed to clear images: " + delIErr.message);
 
       const validImages = p.product_images.filter(
-        (img) => img.image_url.trim() !== "",
+        (img) => img.image_url.trim() !== ""
       );
       if (validImages.length > 0) {
-        const { error: iErr } = await supabase.from("product_images").insert(
-          validImages.map((img, idx) => ({
-            product_id: id,
-            image_url: img.image_url.trim(),
-            position: idx,
-          })),
-        );
+        const { error: iErr } = await supabase
+          .from("product_images")
+          .insert(
+            validImages.map((img, idx) => ({
+              product_id: id,
+              image_url: img.image_url.trim(),
+              position: idx,
+            }))
+          );
         if (iErr) throw new Error("Failed to save images: " + iErr.message);
       }
 
@@ -294,6 +226,7 @@ export default function EditProductsPage() {
       setSaved(id);
       setTimeout(() => setSaved(null), 3000);
       await fetchProducts();
+
     } catch (err: any) {
       alert("Save failed: " + err.message);
     }
@@ -306,22 +239,13 @@ export default function EditProductsPage() {
     setDeleting(id);
 
     try {
-      const { error: vErr } = await supabase
-        .from("variants")
-        .delete()
-        .eq("product_id", id);
+      const { error: vErr } = await supabase.from("variants").delete().eq("product_id", id);
       if (vErr) throw new Error("Failed to delete variants: " + vErr.message);
 
-      const { error: iErr } = await supabase
-        .from("product_images")
-        .delete()
-        .eq("product_id", id);
+      const { error: iErr } = await supabase.from("product_images").delete().eq("product_id", id);
       if (iErr) throw new Error("Failed to delete images: " + iErr.message);
 
-      const { error: pErr } = await supabase
-        .from("products")
-        .delete()
-        .eq("id", id);
+      const { error: pErr } = await supabase.from("products").delete().eq("id", id);
       if (pErr) throw new Error("Failed to delete product: " + pErr.message);
 
       await fetchProducts();
@@ -337,12 +261,8 @@ export default function EditProductsPage() {
       <div className="min-h-screen bg-zinc-950 text-white flex items-center justify-center px-4">
         <div className="w-full max-w-sm space-y-6">
           <div className="text-center">
-            <h1 className="font-bold tracking-[0.4em] text-sm uppercase mb-2">
-              LOISTECH
-            </h1>
-            <p className="text-zinc-600 text-xs tracking-widest uppercase">
-              Admin Access
-            </p>
+            <h1 className="font-bold tracking-[0.4em] text-sm uppercase mb-2">LOISTECH</h1>
+            <p className="text-zinc-600 text-xs tracking-widest uppercase">Admin Access</p>
           </div>
           <div className="space-y-3">
             <input
@@ -367,16 +287,13 @@ export default function EditProductsPage() {
 
   return (
     <div className="min-h-screen bg-zinc-950 text-white">
+
       <nav className="sticky top-0 z-50 bg-zinc-950/80 backdrop-blur-xl border-b border-zinc-800/60">
         <div className="max-w-4xl mx-auto px-4 sm:px-8 py-4 flex items-center justify-between">
           <div className="flex items-center gap-6">
-            <h1 className="font-bold tracking-[0.4em] text-sm uppercase">
-              LOISTECH Admin
-            </h1>
+            <h1 className="font-bold tracking-[0.4em] text-sm uppercase">LOISTECH Admin</h1>
             <span className="text-zinc-700 text-xs">|</span>
-            <span className="text-zinc-400 text-xs tracking-widest uppercase">
-              Edit Products
-            </span>
+            <span className="text-zinc-400 text-xs tracking-widest uppercase">Edit Products</span>
           </div>
           <div className="flex items-center gap-4">
             <button
@@ -402,9 +319,9 @@ export default function EditProductsPage() {
       </nav>
 
       <div className="max-w-4xl mx-auto px-4 sm:px-8 py-10 pb-24 space-y-3">
+
         <p className="text-[10px] tracking-[0.4em] uppercase text-zinc-600 mb-6">
-          {products.length} product{products.length !== 1 ? "s" : ""} — click to
-          expand and edit
+          {products.length} product{products.length !== 1 ? "s" : ""} — click to expand and edit
         </p>
 
         {products.map((product) => {
@@ -413,10 +330,6 @@ export default function EditProductsPage() {
           if (!ed) return null;
 
           const currentLabel = ed.variants[0]?.option_label ?? "Color";
-          const discountPercentage = clampDiscountPercentage(
-            ed.discount_percentage,
-          );
-          const salePrice = getDiscountedPrice(ed.price, discountPercentage);
 
           return (
             <div
@@ -438,27 +351,10 @@ export default function EditProductsPage() {
                 </div>
 
                 <div className="flex-1 min-w-0">
-                  <p className="text-sm text-white font-medium truncate">
-                    {product.name}
-                  </p>
-                  <p className="text-xs text-zinc-500 mt-0.5 flex flex-wrap items-center gap-2">
-                    {discountPercentage > 0 ? (
-                      <>
-                        <span className="line-through text-zinc-500">
-                          {formatCurrency(ed.price)}
-                        </span>
-                        <span className="text-white">
-                          {formatCurrency(salePrice)}
-                        </span>
-                        <span className="text-[10px] bg-emerald-400/10 text-emerald-400 px-2 py-0.5 rounded-full">
-                          {discountPercentage}% off
-                        </span>
-                      </>
-                    ) : (
-                      <span>{formatCurrency(ed.price)}</span>
-                    )}
-                    &nbsp;·&nbsp; {product.variants.length} option
-                    {product.variants.length !== 1 ? "s" : ""}
+                  <p className="text-sm text-white font-medium truncate">{product.name}</p>
+                  <p className="text-xs text-zinc-500 mt-0.5">
+                    ₦{(product.price / 100).toLocaleString()} &nbsp;·&nbsp;{" "}
+                    {product.variants.length} option{product.variants.length !== 1 ? "s" : ""}
                     {product.is_featured && (
                       <span className="ml-2 text-[10px] bg-white/10 text-zinc-300 px-2 py-0.5 rounded-full">
                         Featured
@@ -472,10 +368,7 @@ export default function EditProductsPage() {
                   </p>
                 </div>
 
-                <div
-                  className="flex items-center gap-2"
-                  onClick={(e) => e.stopPropagation()}
-                >
+                <div className="flex items-center gap-2" onClick={(e) => e.stopPropagation()}>
                   {saved === product.id && (
                     <span className="flex items-center gap-1 text-green-400 text-[10px]">
                       <CheckCircle size={12} /> Saved
@@ -491,21 +384,16 @@ export default function EditProductsPage() {
                 </div>
 
                 {isOpen ? (
-                  <ChevronUp
-                    size={16}
-                    className="text-zinc-600 flex-shrink-0"
-                  />
+                  <ChevronUp size={16} className="text-zinc-600 flex-shrink-0" />
                 ) : (
-                  <ChevronDown
-                    size={16}
-                    className="text-zinc-600 flex-shrink-0"
-                  />
+                  <ChevronDown size={16} className="text-zinc-600 flex-shrink-0" />
                 )}
               </div>
 
               {isOpen && (
                 <div className="border-t border-zinc-800/60 px-5 py-6 space-y-6">
                   <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+
                     {/* LEFT */}
                     <div className="space-y-4">
                       <div>
@@ -517,29 +405,19 @@ export default function EditProductsPage() {
                             type="text"
                             placeholder="Product Name *"
                             value={ed.name}
-                            onChange={(e) =>
-                              updateField(product.id, "name", e.target.value)
-                            }
+                            onChange={(e) => updateField(product.id, "name", e.target.value)}
                             className={inputClass}
                           />
                           <textarea
                             placeholder="Description"
                             value={ed.description}
-                            onChange={(e) =>
-                              updateField(
-                                product.id,
-                                "description",
-                                e.target.value,
-                              )
-                            }
+                            onChange={(e) => updateField(product.id, "description", e.target.value)}
                             rows={3}
                             className={`${inputClass} resize-none`}
                           />
                           <div className="grid grid-cols-2 gap-3">
                             <div className="relative">
-                              <span className="absolute left-4 top-1/2 -translate-y-1/2 text-zinc-500 text-sm">
-                                ₦
-                              </span>
+                              <span className="absolute left-4 top-1/2 -translate-y-1/2 text-zinc-500 text-sm">₦</span>
                               <input
                                 type="number"
                                 placeholder="Price"
@@ -548,9 +426,7 @@ export default function EditProductsPage() {
                                   updateField(
                                     product.id,
                                     "price",
-                                    Math.round(
-                                      parseFloat(e.target.value || "0") * 100,
-                                    ),
+                                    Math.round(parseFloat(e.target.value || "0") * 100)
                                   )
                                 }
                                 className={`${inputClass} pl-8`}
@@ -558,20 +434,12 @@ export default function EditProductsPage() {
                             </div>
                             <select
                               value={ed.category_id}
-                              onChange={(e) =>
-                                updateField(
-                                  product.id,
-                                  "category_id",
-                                  e.target.value,
-                                )
-                              }
+                              onChange={(e) => updateField(product.id, "category_id", e.target.value)}
                               className={inputClass}
                             >
                               <option value="">Category</option>
                               {categories.map((cat) => (
-                                <option key={cat.id} value={cat.id}>
-                                  {cat.name}
-                                </option>
+                                <option key={cat.id} value={cat.id}>{cat.name}</option>
                               ))}
                             </select>
                           </div>
@@ -587,43 +455,12 @@ export default function EditProductsPage() {
                                 updateField(
                                   product.id,
                                   "discount_percentage",
-                                  e.target.value === ""
-                                    ? null
-                                    : clampDiscountPercentage(e.target.value),
+                                  e.target.value === "" ? null : clampDiscountPercentage(e.target.value)
                                 )
                               }
                               className={`${inputClass} pr-10`}
                             />
-                            <span className="absolute right-4 top-1/2 -translate-y-1/2 text-zinc-500 text-sm">
-                              %
-                            </span>
-                          </div>
-
-                          <div className="rounded-xl border border-zinc-800 bg-zinc-900/70 p-3">
-                            <div className="flex items-center justify-between text-[10px] tracking-[0.3em] uppercase text-zinc-500">
-                              <span>Price preview</span>
-                              {discountPercentage > 0 && (
-                                <span className="text-emerald-400">
-                                  {discountPercentage}% off
-                                </span>
-                              )}
-                            </div>
-                            <div className="mt-2 flex items-center gap-2 flex-wrap">
-                              {discountPercentage > 0 ? (
-                                <>
-                                  <span className="text-sm text-zinc-500 line-through">
-                                    {formatCurrency(ed.price)}
-                                  </span>
-                                  <span className="text-lg font-semibold text-white">
-                                    {formatCurrency(salePrice)}
-                                  </span>
-                                </>
-                              ) : (
-                                <span className="text-lg font-semibold text-white">
-                                  {formatCurrency(ed.price)}
-                                </span>
-                              )}
-                            </div>
+                            <span className="absolute right-4 top-1/2 -translate-y-1/2 text-zinc-500 text-sm">%</span>
                           </div>
 
                           <label className="flex items-center gap-3 px-4 py-3 bg-zinc-900 border border-zinc-800 rounded-xl cursor-pointer hover:border-zinc-700 transition-colors">
@@ -635,23 +472,13 @@ export default function EditProductsPage() {
                               />
                             </div>
                             <div>
-                              <p className="text-xs text-white">
-                                Mark as Featured
-                              </p>
-                              <p className="text-[10px] text-zinc-600">
-                                Shows New badge on product card
-                              </p>
+                              <p className="text-xs text-white">Mark as Featured</p>
+                              <p className="text-[10px] text-zinc-600">Shows New badge on product card</p>
                             </div>
                             <input
                               type="checkbox"
                               checked={ed.is_featured}
-                              onChange={(e) =>
-                                updateField(
-                                  product.id,
-                                  "is_featured",
-                                  e.target.checked,
-                                )
-                              }
+                              onChange={(e) => updateField(product.id, "is_featured", e.target.checked)}
                               className="hidden"
                             />
                           </label>
@@ -665,24 +492,13 @@ export default function EditProductsPage() {
                               />
                             </div>
                             <div>
-                              <p className="text-xs text-white">
-                                Commission / Bespoke Item
-                              </p>
-                              <p className="text-[10px] text-zinc-600">
-                                Shows Request Consultation instead of Add to
-                                Cart
-                              </p>
+                              <p className="text-xs text-white">Commission / Bespoke Item</p>
+                              <p className="text-[10px] text-zinc-600">Shows Request Consultation instead of Add to Cart</p>
                             </div>
                             <input
                               type="checkbox"
                               checked={ed.is_commission}
-                              onChange={(e) =>
-                                updateField(
-                                  product.id,
-                                  "is_commission",
-                                  e.target.checked,
-                                )
-                              }
+                              onChange={(e) => updateField(product.id, "is_commission", e.target.checked)}
                               className="hidden"
                             />
                           </label>
@@ -695,138 +511,60 @@ export default function EditProductsPage() {
                           Product Options
                         </p>
 
-                        <label className="flex items-center gap-3 px-4 py-3 bg-zinc-900 border border-zinc-800 rounded-xl cursor-pointer hover:border-zinc-700 transition-colors mb-4">
-                          <input
-                            type="checkbox"
-                            checked={ed.is_plain_product}
-                            onChange={(e) =>
-                              togglePlainProduct(product.id, e.target.checked)
-                            }
-                            className="h-4 w-4 rounded border-zinc-700 bg-zinc-900 text-white"
-                          />
-                          <div>
-                            <p className="text-xs text-white">
-                              No options — plain product
-                            </p>
-                            <p className="text-[10px] text-zinc-500">
-                              Use one stock count and skip variant rows
-                            </p>
+                        <div className="mb-3">
+                          <p className="text-xs text-zinc-400 mb-2">Option type</p>
+                          <div className="flex gap-2 flex-wrap">
+                            {["Color", "Finish", "Wattage", "Storage", "Model"].map((label) => (
+                              <button
+                                key={label}
+                                onClick={() => updateAllOptionLabels(product.id, label)}
+                                className={`px-4 py-2 rounded-xl text-xs transition-all border ${
+                                  currentLabel === label
+                                    ? "bg-white text-zinc-950 border-white"
+                                    : "bg-zinc-900 text-zinc-500 border-zinc-800 hover:border-zinc-600"
+                                }`}
+                              >
+                                {label}
+                              </button>
+                            ))}
                           </div>
-                        </label>
+                        </div>
 
-                        {!ed.is_plain_product ? (
-                          <>
-                            <div className="mb-3">
-                              <p className="text-xs text-zinc-400 mb-2">
-                                Option type
-                              </p>
-                              <div className="flex gap-2 flex-wrap">
-                                {[
-                                  "Color",
-                                  "Finish",
-                                  "Wattage",
-                                  "Storage",
-                                  "Model",
-                                ].map((label) => (
-                                  <button
-                                    key={label}
-                                    onClick={() =>
-                                      updateAllOptionLabels(product.id, label)
-                                    }
-                                    className={`px-4 py-2 rounded-xl text-xs transition-all border ${
-                                      currentLabel === label
-                                        ? "bg-white text-zinc-950 border-white"
-                                        : "bg-zinc-900 text-zinc-500 border-zinc-800 hover:border-zinc-600"
-                                    }`}
-                                  >
-                                    {label}
-                                  </button>
-                                ))}
-                              </div>
-                            </div>
-
-                            <div className="space-y-2">
-                              {ed.variants.map((v, idx) => (
-                                <div
-                                  key={rowKey(v)}
-                                  className="flex items-center gap-2"
-                                >
-                                  <input
-                                    type="text"
-                                    placeholder={`${currentLabel} (e.g. Black)`}
-                                    value={v.option_value}
-                                    onChange={(e) =>
-                                      updateVariant(
-                                        product.id,
-                                        idx,
-                                        "option_value",
-                                        e.target.value,
-                                      )
-                                    }
-                                    className={`${inputClass} flex-1`}
-                                  />
-                                  <input
-                                    type="number"
-                                    min={0}
-                                    placeholder="Stock"
-                                    value={v.stock}
-                                    onChange={(e) =>
-                                      updateVariant(
-                                        product.id,
-                                        idx,
-                                        "stock",
-                                        parseInt(e.target.value) || 0,
-                                      )
-                                    }
-                                    className={`${inputClass} w-24`}
-                                  />
-                                  <button
-                                    onClick={() =>
-                                      removeVariantRow(product.id, idx)
-                                    }
-                                    className="text-zinc-700 hover:text-red-400 transition-colors flex-shrink-0"
-                                  >
-                                    <Trash2 size={14} />
-                                  </button>
-                                </div>
-                              ))}
-                            </div>
-
-                            <button
-                              onClick={() => addVariantRow(product.id)}
-                              className="flex items-center gap-1 text-[10px] tracking-widest uppercase text-zinc-500 hover:text-white transition-colors mt-3"
-                            >
-                              <Plus size={11} />
-                              Add Another {currentLabel}
-                            </button>
-                          </>
-                        ) : (
-                          <div className="space-y-3">
-                            <div>
-                              <label className="text-xs text-zinc-400 mb-2 block">
-                                Stock available
-                              </label>
+                        <div className="space-y-2">
+                          {ed.variants.map((v, idx) => (
+                            <div key={rowKey(v)} className="flex items-center gap-2">
+                              <input
+                                type="text"
+                                placeholder={`${currentLabel} (e.g. Black)`}
+                                value={v.option_value}
+                                onChange={(e) => updateVariant(product.id, idx, "option_value", e.target.value)}
+                                className={`${inputClass} flex-1`}
+                              />
                               <input
                                 type="number"
                                 min={0}
-                                placeholder="e.g. 10"
-                                value={ed.stock}
-                                onChange={(e) =>
-                                  updateField(
-                                    product.id,
-                                    "stock",
-                                    parseInt(e.target.value) || 0,
-                                  )
-                                }
-                                className={inputClass}
+                                placeholder="Stock"
+                                value={v.stock}
+                                onChange={(e) => updateVariant(product.id, idx, "stock", parseInt(e.target.value) || 0)}
+                                className={`${inputClass} w-24`}
                               />
+                              <button
+                                onClick={() => removeVariantRow(product.id, idx)}
+                                className="text-zinc-700 hover:text-red-400 transition-colors flex-shrink-0"
+                              >
+                                <Trash2 size={14} />
+                              </button>
                             </div>
-                            <p className="text-[10px] text-zinc-500 leading-relaxed">
-                              Customers will see a single add-to-cart flow with
-                              no option picker.
-                            </p>
-                          </div>
-                        )}
+                          ))}
+                        </div>
+
+                        <button
+                          onClick={() => addVariantRow(product.id)}
+                          className="flex items-center gap-1 text-[10px] tracking-widest uppercase text-zinc-500 hover:text-white transition-colors mt-3"
+                        >
+                          <Plus size={11} />
+                          Add Another {currentLabel}
+                        </button>
                       </div>
                     </div>
 
@@ -840,9 +578,7 @@ export default function EditProductsPage() {
                           type="text"
                           placeholder="https://... main image URL"
                           value={ed.image_url}
-                          onChange={(e) =>
-                            updateField(product.id, "image_url", e.target.value)
-                          }
+                          onChange={(e) => updateField(product.id, "image_url", e.target.value)}
                           className={inputClass}
                         />
                         {ed.image_url && (
@@ -870,22 +606,13 @@ export default function EditProductsPage() {
                         </div>
                         <div className="space-y-2">
                           {ed.product_images.map((img, idx) => (
-                            <div
-                              key={rowKey(img)}
-                              className="flex gap-2 items-start"
-                            >
+                            <div key={rowKey(img)} className="flex gap-2 items-start">
                               <div className="flex-1 space-y-1">
                                 <input
                                   type="text"
                                   placeholder={`Image ${idx + 1} URL`}
                                   value={img.image_url}
-                                  onChange={(e) =>
-                                    updateImageUrl(
-                                      product.id,
-                                      idx,
-                                      e.target.value,
-                                    )
-                                  }
+                                  onChange={(e) => updateImageUrl(product.id, idx, e.target.value)}
                                   className={inputClass}
                                 />
                                 {img.image_url && (
@@ -910,9 +637,7 @@ export default function EditProductsPage() {
 
                         <div className="mt-4 px-4 py-3 bg-zinc-900/60 rounded-xl border border-zinc-800/40">
                           <p className="text-[10px] text-zinc-500 leading-relaxed">
-                            💡 Upload at{" "}
-                            <span className="text-zinc-300">imgur.com</span> →
-                            right click → Copy Image Address → paste above
+                            💡 Upload at <span className="text-zinc-300">imgur.com</span> → right click → Copy Image Address → paste above
                           </p>
                         </div>
                       </div>
@@ -933,8 +658,7 @@ export default function EditProductsPage() {
                     </button>
                     {saved === product.id && (
                       <p className="text-green-400 text-[10px] tracking-wide text-center mt-3 flex items-center justify-center gap-1">
-                        <CheckCircle size={11} /> Changes saved — live on shop
-                        now
+                        <CheckCircle size={11} /> Changes saved — live on shop now
                       </p>
                     )}
                   </div>

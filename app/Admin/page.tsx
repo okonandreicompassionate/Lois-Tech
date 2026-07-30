@@ -128,6 +128,10 @@ export default function AdminPage() {
         option_value: v.option_value.trim(),
         stock: v.stock,
       }));
+    } else {
+      variantsToInsert = [
+        { option_label: "Stock", option_value: "Standard", stock: singleStock },
+      ];
     }
 
     setLoading(true);
@@ -144,7 +148,6 @@ export default function AdminPage() {
           price: priceInKobo,
           image_url: form.image_url,
           category_id: form.category_id,
-          stock: hasVariants ? 0 : singleStock,
           is_featured: form.is_featured,
           is_commission: form.is_commission,
         })
@@ -388,18 +391,37 @@ export default function AdminPage() {
                 Stock & Options
               </p>
 
-              <label className="flex items-center gap-3 px-4 py-3 bg-slate-50 border border-slate-200 rounded-xl cursor-pointer hover:border-slate-300 transition-colors mb-4">
-                <input
-                  type="checkbox"
-                  checked={!hasVariants}
-                  onChange={(e) => setHasVariants(!e.target.checked)}
-                  className="h-4 w-4 rounded border-slate-300 text-slate-900 focus:ring-slate-400"
-                />
-                <div>
-                  <p className="text-xs text-slate-900">No options — plain product</p>
-                  <p className="text-[10px] text-slate-500">Use one stock count and skip variant selection</p>
-                </div>
-              </label>
+              {/* TOGGLE */}
+              <div className="flex gap-2 mb-4">
+                <button
+                  type="button"
+                  onClick={() => setHasVariants(false)}
+                  className={`flex-1 px-4 py-3 rounded-xl text-xs font-medium transition-all border text-left ${
+                    !hasVariants
+                      ? "bg-slate-900 text-white border-slate-900"
+                      : "bg-white text-slate-600 border-slate-300 hover:border-slate-400"
+                  }`}
+                >
+                  <span className="block">Single Item</span>
+                  <span className={`block text-[10px] mt-0.5 ${!hasVariants ? "text-white/60" : "text-slate-400"}`}>
+                    Just one version — set total stock
+                  </span>
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setHasVariants(true)}
+                  className={`flex-1 px-4 py-3 rounded-xl text-xs font-medium transition-all border text-left ${
+                    hasVariants
+                      ? "bg-slate-900 text-white border-slate-900"
+                      : "bg-white text-slate-600 border-slate-300 hover:border-slate-400"
+                  }`}
+                >
+                  <span className="block">Has Options</span>
+                  <span className={`block text-[10px] mt-0.5 ${hasVariants ? "text-white/60" : "text-slate-400"}`}>
+                    e.g. different colors, wattages
+                  </span>
+                </button>
+              </div>
 
               {/* SINGLE ITEM */}
               {!hasVariants && (

@@ -11,7 +11,6 @@ interface CartItem {
   price: number;
   quantity: number;
   max_quantity?: number;
-  is_plain_product?: boolean;
 }
 
 interface CartContextType {
@@ -49,7 +48,8 @@ export function CartProvider({ children }: { children: React.ReactNode }) {
     setCartItems((prev) => {
       const existing = prev.find(
         (item) =>
-          item.id === incomingItem.id && item.size === incomingItem.size,
+          item.id === incomingItem.id &&
+          item.size === incomingItem.size
       );
 
       const nextQuantity = (existing?.quantity ?? 0) + 1;
@@ -60,9 +60,10 @@ export function CartProvider({ children }: { children: React.ReactNode }) {
 
       if (existing) {
         return prev.map((item) =>
-          item.id === incomingItem.id && item.size === incomingItem.size
+          item.id === incomingItem.id &&
+          item.size === incomingItem.size
             ? { ...item, quantity: nextQuantity }
-            : item,
+            : item
         );
       }
 
@@ -72,7 +73,7 @@ export function CartProvider({ children }: { children: React.ReactNode }) {
 
   const removeFromCart = (id: string, size: string) => {
     setCartItems((prev) =>
-      prev.filter((item) => !(item.id === id && item.size === size)),
+      prev.filter((item) => !(item.id === id && item.size === size))
     );
   };
 
@@ -92,7 +93,9 @@ export function CartProvider({ children }: { children: React.ReactNode }) {
       }
 
       return prev.map((item) =>
-        item.id === id && item.size === size ? { ...item, quantity } : item,
+        item.id === id && item.size === size
+          ? { ...item, quantity }
+          : item
       );
     });
   };
@@ -105,10 +108,12 @@ export function CartProvider({ children }: { children: React.ReactNode }) {
     () =>
       cartItems.reduce(
         (total, item) =>
-          total + (Number(item.price) || 0) * (Number(item.quantity) || 0),
-        0,
+          total +
+          (Number(item.price) || 0) *
+          (Number(item.quantity) || 0),
+        0
       ),
-    [cartItems],
+    [cartItems]
   );
 
   return (

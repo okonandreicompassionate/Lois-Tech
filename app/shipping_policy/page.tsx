@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import Footer from "../components/Footer";
 
 export default function ShippingPolicy() {
   const [activeSection, setActiveSection] = useState("zones");
@@ -18,7 +19,7 @@ export default function ShippingPolicy() {
       },
       {
         rootMargin: "-40% 0px -55% 0px",
-      }
+      },
     );
 
     sections.forEach((s) => observer.observe(s));
@@ -291,25 +292,15 @@ export default function ShippingPolicy() {
                 </p>
 
                 <p className="text-[12px] font-light text-[#d6d1c7] leading-loose">
-                  Orders above{" "}
-                  <span className="text-[#f8f6f2]">₦100,000</span> qualify for
-                  free nationwide delivery.
+                  Orders above <span className="text-[#f8f6f2]">₦100,000</span>{" "}
+                  qualify for free nationwide delivery.
                 </p>
               </div>
             </section>
           </div>
         </main>
 
-        {/* FOOTER */}
-        <footer className="border-t border-[#161616] px-6 md:px-12 py-8 flex flex-col sm:flex-row justify-between items-center gap-3 font-body">
-          <span className="font-display text-base tracking-[0.4em] text-[#5e564b] uppercase">
-            Lois Tech
-          </span>
-
-          <span className="text-[10px] tracking-[0.12em] text-[#5e564b]">
-            © 2025 Lois Tech. All rights reserved. Lagos, Nigeria.
-          </span>
-        </footer>
+        <Footer />
       </div>
     </div>
   );

@@ -113,36 +113,11 @@ export default function CartPage() {
     setLoading(true);
 
     try {
-      const variantIds = cartItems
-        .filter((item) => !item.is_plain_product)
-        .map((item) => item.id);
-      const productIds = cartItems
-        .filter((item) => item.is_plain_product)
-        .map((item) => item.product_id);
-
+      const variantIds = cartItems.map((item) => item.id);
       const { data: variantRows, error: stockFetchError } = await supabase
         .from("variants")
         .select("id, stock")
         .in("id", variantIds);
-
-      let productStockMap = new Map<string, number>();
-      if (productIds.length > 0) {
-        const { data: productRows, error: productStockError } = await supabase
-          .from("products")
-          .select("id, stock")
-          .in("id", productIds);
-
-        if (productStockError) {
-          throw new Error("Could not confirm current stock. Please try again.");
-        }
-
-        productStockMap = new Map(
-          (productRows ?? []).map((product: any) => [
-            product.id,
-            Number(product.stock) || 0,
-          ]),
-        );
-      }
 
       if (stockFetchError) {
         throw new Error("Could not confirm current stock. Please try again.");
@@ -155,16 +130,13 @@ export default function CartPage() {
         ]),
       );
       const insufficientItem = cartItems.find((item) => {
-        const availableStock = item.is_plain_product
-          ? (productStockMap.get(item.product_id) ?? item.max_quantity ?? 0)
-          : (variantStockMap.get(item.id) ?? item.max_quantity ?? 0);
+        const availableStock =
+          variantStockMap.get(item.id) ?? item.max_quantity ?? 0;
         return availableStock < item.quantity;
       });
 
       if (insufficientItem) {
-        const availableStock = insufficientItem.is_plain_product
-          ? (productStockMap.get(insufficientItem.product_id) ?? 0)
-          : (variantStockMap.get(insufficientItem.id) ?? 0);
+        const availableStock = variantStockMap.get(insufficientItem.id) ?? 0;
         alert(
           `${insufficientItem.name} (${insufficientItem.size}) only has ${availableStock} left in stock.`,
         );
@@ -187,9 +159,15 @@ export default function CartPage() {
         .single();
 
       if (customerError || !customer) {
-        throw new Error(
-          customerError?.message || "Failed to save customer details.",
-        );
+        const message =
+          customerError?.message || "Failed to save customer details.";
+        const friendlyMessage =
+          message.includes("public.customers") ||
+          message.includes("Could not find the table") ||
+          message.includes("customers")
+            ? "Checkout could not complete because the Supabase 'customers' table is missing or inaccessible. Please create the table or verify your Supabase schema."
+            : message;
+        throw new Error(friendlyMessage);
       }
 
       const { data: order, error: orderError } = await supabase
@@ -211,7 +189,7 @@ export default function CartPage() {
       const orderItems = cartItems.map((item) => ({
         order_id: order.id,
         product_id: item.product_id,
-        variant_id: item.is_plain_product ? null : item.id,
+        variant_id: item.id,
         name: item.name,
         size: item.size,
         quantity: item.quantity,
@@ -226,41 +204,21 @@ export default function CartPage() {
       }
 
       for (const item of cartItems) {
-        const currentStock = item.is_plain_product
-          ? (productStockMap.get(item.product_id) ?? 0)
-          : (variantStockMap.get(item.id) ?? 0);
+        const currentStock = variantStockMap.get(item.id) ?? 0;
         const nextStock = currentStock - item.quantity;
+        const { data: updatedStockRow, error: stockUpdateError } =
+          await supabase
+            .from("variants")
+            .update({ stock: nextStock })
+            .eq("id", item.id)
+            .eq("stock", currentStock)
+            .select("id")
+            .maybeSingle();
 
-        if (item.is_plain_product) {
-          const { data: updatedStockRow, error: stockUpdateError } =
-            await supabase
-              .from("products")
-              .update({ stock: nextStock })
-              .eq("id", item.product_id)
-              .eq("stock", currentStock)
-              .select("id")
-              .maybeSingle();
-
-          if (stockUpdateError || !updatedStockRow) {
-            throw new Error(
-              `${item.name} stock changed while checking out. Please review your cart and try again.`,
-            );
-          }
-        } else {
-          const { data: updatedStockRow, error: stockUpdateError } =
-            await supabase
-              .from("variants")
-              .update({ stock: nextStock })
-              .eq("id", item.id)
-              .eq("stock", currentStock)
-              .select("id")
-              .maybeSingle();
-
-          if (stockUpdateError || !updatedStockRow) {
-            throw new Error(
-              `${item.name} stock changed while checking out. Please review your cart and try again.`,
-            );
-          }
+        if (stockUpdateError || !updatedStockRow) {
+          throw new Error(
+            `${item.name} stock changed while checking out. Please review your cart and try again.`,
+          );
         }
       }
 
@@ -277,8 +235,32 @@ export default function CartPage() {
       );
       window.location.href = "/pay";
     } catch (error: any) {
+      const message =
+        error?.message || "Something went wrong. Please try again!";
+      const isSchemaIssue =
+        message.includes("public.customers") ||
+        message.includes("Could not find the table") ||
+        message.includes("customers");
+
+      if (isSchemaIssue) {
+        localStorage.setItem(
+          "pendingOrder",
+          JSON.stringify({
+            form,
+            cartItems,
+            subtotal: cartTotal,
+            deliveryFee,
+            total: grandTotal,
+            orderId: null,
+            backendUnavailable: true,
+          }),
+        );
+        window.location.href = "/pay";
+        return;
+      }
+
       console.error(error);
-      alert(error?.message || "Something went wrong. Please try again!");
+      alert(message);
       setLoading(false);
     }
   };

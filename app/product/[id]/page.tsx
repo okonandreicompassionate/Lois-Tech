@@ -31,7 +31,6 @@ type Product = {
   description: string;
   image_url: string;
   price: number;
-  stock: number;
   discount_percentage?: number | null;
   is_commission: boolean;
   categories: { name: string }[] | null;
@@ -51,6 +50,11 @@ export default function ProductPage() {
   const [loading, setLoading] = useState(true);
   const [added, setAdded] = useState(false);
 
+  const allVariantsSoldOut = product
+    ? product.variants.length > 0 &&
+      product.variants.every((variant) => variant.stock <= 0)
+    : false;
+
   useEffect(() => {
     async function fetchProduct() {
       const { data, error } = await supabase
@@ -62,8 +66,6 @@ export default function ProductPage() {
           description,
           image_url,
           price,
-          stock,
-          discount_percentage,
           is_commission,
           categories ( name ),
           variants ( id, option_label, option_value, stock ),
@@ -84,7 +86,6 @@ export default function ProductPage() {
       );
 
       setProduct({ ...data, product_images: sorted });
-      setSelectedVariant(null);
       setMainImage(sorted[0]?.image_url ?? data.image_url);
       setLoading(false);
     }
@@ -93,41 +94,21 @@ export default function ProductPage() {
   }, [params.id]);
 
   const handleAddToCart = () => {
-    if (!product) return;
+    if (!selectedVariant || !product) return;
 
     const discountPercentage = getDiscountPercentage(product, product.id);
     const finalPrice = getDiscountedPrice(product.price, discountPercentage);
 
-    const hasVariants = product.variants.length > 0;
-
-    if (hasVariants) {
-      if (!selectedVariant) return;
-
-      addToCart({
-        id: selectedVariant.id,
-        product_id: product.id,
-        name: product.name,
-        image_url: product.image_url,
-        size: selectedVariant.option_value,
-        price: finalPrice,
-        quantity: 1,
-        max_quantity: selectedVariant.stock,
-      });
-    } else {
-      if (product.stock <= 0) return;
-
-      addToCart({
-        id: product.id,
-        product_id: product.id,
-        name: product.name,
-        image_url: product.image_url,
-        size: "Standard",
-        price: finalPrice,
-        quantity: 1,
-        max_quantity: product.stock,
-        is_plain_product: true,
-      });
-    }
+    addToCart({
+      id: selectedVariant.id,
+      product_id: product.id,
+      name: product.name,
+      image_url: product.image_url,
+      size: selectedVariant.option_value,
+      price: finalPrice,
+      quantity: 1,
+      max_quantity: selectedVariant.stock,
+    });
 
     setAdded(true);
     setTimeout(() => {
@@ -186,17 +167,9 @@ export default function ProductPage() {
       ? product.product_images
       : [{ id: "main", image_url: product.image_url, position: 0 }];
 
-  const hasVariants = product.variants.length > 0;
   const optionLabel = product.variants[0]?.option_label ?? "Option";
   const discountPercentage = getDiscountPercentage(product, product.id);
   const finalPrice = getDiscountedPrice(product.price, discountPercentage);
-  const availabilityLabel = hasVariants
-    ? selectedVariant && selectedVariant.stock > 0 && selectedVariant.stock <= 3
-      ? `Only ${selectedVariant.stock} left in stock`
-      : null
-    : product.stock > 0 && product.stock <= 3
-      ? `Only ${product.stock} left in stock`
-      : null;
 
   return (
     <div className="bg-slate-200 min-h-screen text-slate-900 font-titillium">
@@ -345,23 +318,14 @@ export default function ProductPage() {
                     Custom pricing on consultation
                   </p>
                 ) : (
-                  <div className="flex flex-wrap items-center gap-2">
-                    {discountPercentage > 0 ? (
-                      <>
-                        <p className="text-lg text-slate-400 line-through">
-                          {formatCurrency(product.price)}
-                        </p>
-                        <p className="text-2xl font-semibold text-slate-900">
-                          {formatCurrency(finalPrice)}
-                        </p>
-                        <span className="text-sm text-emerald-600 font-medium">
-                          {discountPercentage}% off
-                        </span>
-                      </>
-                    ) : (
-                      <p className="text-2xl font-semibold text-slate-900">
-                        {formatCurrency(finalPrice)}
-                      </p>
+                  <div className="flex items-center gap-2">
+                    <p className="text-2xl font-semibold text-slate-900">
+                      {formatCurrency(finalPrice)}
+                    </p>
+                    {discountPercentage > 0 && (
+                      <span className="text-sm text-emerald-600 font-medium">
+                        {discountPercentage}% off
+                      </span>
                     )}
                   </div>
                 )}
@@ -393,94 +357,76 @@ export default function ProductPage() {
               </>
             ) : (
               <>
-                {hasVariants ? (
-                  <div>
-                    <div className="flex items-center justify-between mb-3">
-                      <p className="text-xs tracking-[0.2em] uppercase text-slate-500">
-                        Select {optionLabel}
-                        {selectedVariant && (
-                          <span className="text-slate-900 ml-2">
-                            — {selectedVariant.option_value}
-                          </span>
-                        )}
+                {/* OPTION SELECTOR */}
+                <div>
+                  <div className="flex items-center justify-between mb-3">
+                    <p className="text-xs tracking-[0.2em] uppercase text-slate-500">
+                      Select {optionLabel}
+                      {selectedVariant && (
+                        <span className="text-slate-900 ml-2">
+                          — {selectedVariant.option_value}
+                        </span>
+                      )}
+                    </p>
+                  </div>
+
+                  <div className="flex gap-2 flex-wrap">
+                    {product.variants.map((variant) => {
+                      const outOfStock = variant.stock === 0;
+                      const isSelected = selectedVariant?.id === variant.id;
+                      return (
+                        <button
+                          key={variant.id}
+                          onClick={() =>
+                            !outOfStock && setSelectedVariant(variant)
+                          }
+                          disabled={outOfStock}
+                          className={`px-4 py-3 rounded-xl text-xs font-medium transition-all duration-300 relative ${
+                            outOfStock
+                              ? "bg-slate-50 text-slate-300 cursor-not-allowed border border-slate-200"
+                              : isSelected
+                                ? "bg-slate-900 text-white border-2 border-slate-900 shadow-lg shadow-slate-900/10"
+                                : "bg-white text-slate-700 border border-slate-300 hover:border-slate-500"
+                          }`}
+                        >
+                          {variant.option_value}
+                          {outOfStock && (
+                            <span className="absolute inset-0 flex items-center justify-center">
+                              <span className="w-8 h-px bg-slate-300 rotate-45 absolute" />
+                            </span>
+                          )}
+                        </button>
+                      );
+                    })}
+                  </div>
+
+                  {selectedVariant &&
+                    selectedVariant.stock > 0 &&
+                    selectedVariant.stock <= 3 && (
+                      <p className="text-[10px] text-red-500 mt-3 uppercase tracking-widest">
+                        Only {selectedVariant.stock} left in stock
                       </p>
-                    </div>
+                    )}
+                </div>
 
-                    <div className="flex gap-2 flex-wrap">
-                      {product.variants.map((variant) => {
-                        const outOfStock = variant.stock === 0;
-                        const isSelected = selectedVariant?.id === variant.id;
-                        return (
-                          <button
-                            key={variant.id}
-                            onClick={() =>
-                              !outOfStock && setSelectedVariant(variant)
-                            }
-                            disabled={outOfStock}
-                            className={`px-4 py-3 rounded-xl text-xs font-medium transition-all duration-300 relative ${
-                              outOfStock
-                                ? "bg-slate-50 text-slate-300 cursor-not-allowed border border-slate-200"
-                                : isSelected
-                                  ? "bg-slate-900 text-white border-2 border-slate-900 shadow-lg shadow-slate-900/10"
-                                  : "bg-white text-slate-700 border border-slate-300 hover:border-slate-500"
-                            }`}
-                          >
-                            {variant.option_value}
-                            {outOfStock && (
-                              <span className="absolute inset-0 flex items-center justify-center">
-                                <span className="w-8 h-px bg-slate-300 rotate-45 absolute" />
-                              </span>
-                            )}
-                          </button>
-                        );
-                      })}
-                    </div>
-                  </div>
-                ) : (
-                  <div className="bg-white border border-slate-200 rounded-2xl p-4">
-                    <p className="text-[10px] tracking-[0.3em] uppercase text-slate-400 mb-2">
-                      Availability
-                    </p>
-                    <p className="text-sm text-slate-700">
-                      {product.stock > 0
-                        ? `${product.stock} in stock`
-                        : "Out of stock"}
-                    </p>
-                  </div>
-                )}
-
-                {availabilityLabel && (
-                  <p className="text-[10px] text-red-500 uppercase tracking-widest">
-                    {availabilityLabel}
-                  </p>
-                )}
-
+                {/* ADD TO CART */}
                 <button
                   onClick={handleAddToCart}
-                  disabled={
-                    added ||
-                    (hasVariants ? !selectedVariant : product.stock <= 0)
-                  }
+                  disabled={!selectedVariant || added || productSoldOut}
                   className={`w-full py-4 rounded-2xl text-xs tracking-[0.3em] uppercase font-semibold transition-all duration-300 ${
-                    added
+                    added || productSoldOut
                       ? "bg-slate-200 text-slate-500 cursor-not-allowed"
-                      : hasVariants
-                        ? !selectedVariant
-                          ? "bg-slate-100 text-slate-400 cursor-not-allowed border border-slate-200"
-                          : "bg-slate-900 text-white hover:bg-slate-800 shadow-lg shadow-slate-900/10"
-                        : product.stock <= 0
-                          ? "bg-slate-100 text-slate-400 cursor-not-allowed border border-slate-200"
-                          : "bg-slate-900 text-white hover:bg-slate-800 shadow-lg shadow-slate-900/10"
+                      : !selectedVariant
+                        ? "bg-slate-100 text-slate-400 cursor-not-allowed border border-slate-200"
+                        : "bg-slate-900 text-white hover:bg-slate-800 shadow-lg shadow-slate-900/10"
                   }`}
                 >
                   {added
                     ? "✓ Added to Cart"
-                    : hasVariants
-                      ? !selectedVariant
+                    : productSoldOut
+                      ? "Sold Out"
+                      : !selectedVariant
                         ? `Select a ${optionLabel}`
-                        : "Add to Cart"
-                      : product.stock <= 0
-                        ? "Out of Stock"
                         : "Add to Cart"}
                 </button>
               </>

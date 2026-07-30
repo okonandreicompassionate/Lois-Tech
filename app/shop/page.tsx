@@ -10,6 +10,7 @@ import {
   getDiscountPercentage,
   getDiscountedPrice,
 } from "../../lib/pricing";
+import Footer from "../components/Footer";
 
 type Variant = {
   id: string;
@@ -65,8 +66,6 @@ export default function LandingPage() {
             is_featured,
             is_commission,
             price,
-            stock,
-            discount_percentage,
             category_id,
             categories ( id, name, slug, description ),
             variants ( id, option_label, option_value, stock )
@@ -88,21 +87,18 @@ export default function LandingPage() {
     fetchData();
   }, []);
 
-  const categoryById = Object.fromEntries(categories.map((cat) => [cat.id, cat]));
-
   const filteredProducts = products
     .filter((p) => {
       if (activeFilter === "ALL") return true;
       if (activeFilter === "FEATURED") return p.is_featured;
-      return categoryById[p.category_id]?.slug === activeFilter;
+      return p.categories?.[0]?.slug === activeFilter;
     })
     .filter((p) => {
       if (!searchQuery.trim()) return true;
       const q = searchQuery.trim().toLowerCase();
-      const categoryName = categoryById[p.category_id]?.name ?? "";
       return (
         p.name.toLowerCase().includes(q) ||
-        categoryName.toLowerCase().includes(q)
+        (p.categories?.[0]?.name ?? "").toLowerCase().includes(q)
       );
     });
 
@@ -110,30 +106,23 @@ export default function LandingPage() {
     e.preventDefault();
     e.stopPropagation();
 
-    const hasVariants = product.variants.length > 0;
-    const defaultVariant = hasVariants
-      ? product.variants.find((variant) => variant.stock > 0)
-      : null;
-    const availableStock = hasVariants
-      ? (defaultVariant?.stock ?? 0)
-      : product.stock;
-
-    if (!hasVariants && product.stock <= 0) return;
-    if (hasVariants && !defaultVariant) return;
+    const defaultVariant = product.variants.find(
+      (variant) => variant.stock > 0,
+    );
+    if (!defaultVariant) return;
 
     const discountPercentage = getDiscountPercentage(product, product.id);
     const finalPrice = getDiscountedPrice(product.price, discountPercentage);
 
     addToCart({
-      id: hasVariants ? defaultVariant!.id : product.id,
+      id: defaultVariant.id,
       product_id: product.id,
       name: product.name,
       image_url: product.image_url,
-      size: hasVariants ? defaultVariant!.option_value : "Standard",
+      size: defaultVariant.option_value,
       price: finalPrice,
       quantity: 1,
-      max_quantity: availableStock,
-      is_plain_product: !hasVariants,
+      max_quantity: defaultVariant.stock,
     });
 
     setAddedId(product.id);
@@ -429,9 +418,8 @@ export default function LandingPage() {
                 discountPercentage,
               );
               const isSoldOut =
-                (product.variants.length === 0 && product.stock <= 0) ||
-                (product.variants.length > 0 &&
-                  product.variants.every((variant) => variant.stock <= 0));
+                product.variants.length === 0 ||
+                product.variants.every((variant) => variant.stock <= 0);
 
               return (
                 <div
@@ -457,6 +445,12 @@ export default function LandingPage() {
                         Bespoke
                       </span>
                     )}
+
+                    {isSoldOut && (
+                      <span className="absolute left-3 bottom-3 text-[9px] uppercase tracking-widest text-white bg-red-600 px-2.5 py-1 rounded-full">
+                        Sold Out
+                      </span>
+                    )}
                   </div>
 
                   {/* INFO */}
@@ -475,23 +469,14 @@ export default function LandingPage() {
                         Custom pricing on consultation
                       </p>
                     ) : (
-                      <div className="flex flex-wrap items-center gap-2">
-                        {discountPercentage > 0 ? (
-                          <>
-                            <p className="text-sm text-slate-400 line-through">
-                              {formatCurrency(product.price)}
-                            </p>
-                            <p className="text-base font-semibold text-slate-900">
-                              {formatCurrency(finalPrice)}
-                            </p>
-                            <span className="text-xs text-emerald-600 font-medium">
-                              {discountPercentage}% off
-                            </span>
-                          </>
-                        ) : (
-                          <p className="text-base font-semibold text-slate-900">
-                            {formatCurrency(finalPrice)}
-                          </p>
+                      <div className="flex items-center gap-2">
+                        <p className="text-base font-semibold text-slate-900">
+                          {formatCurrency(finalPrice)}
+                        </p>
+                        {discountPercentage > 0 && (
+                          <span className="text-xs text-emerald-600 font-medium">
+                            {discountPercentage}% off
+                          </span>
                         )}
                       </div>
                     )}
@@ -599,143 +584,7 @@ export default function LandingPage() {
         </div>
       </section>
 
-      {/* FOOTER */}
-      <footer className="bg-slate-300">
-        <div className="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8 py-10 sm:py-14">
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-8 sm:gap-10">
-            <div className="col-span-1 sm:col-span-2 lg:col-span-1">
-              <div className="flex items-center gap-2 mb-4">
-                <img
-                  src="https://i.imgur.com/IGBf9Dh.png"
-                  alt="LoisTech"
-                  className="h-7 w-auto"
-                />
-                <span className="text-sm font-semibold tracking-tight text-slate-900">
-                  LOIS TECH
-                </span>
-              </div>
-              <p className="text-xs text-slate-500 leading-relaxed">
-                Privacy-first, build-integrated smart infrastructure for modern
-                living.
-              </p>
-            </div>
-
-            <div>
-              <p className="text-[10px] tracking-[0.3em] uppercase text-slate-500 mb-4">
-                Shop
-              </p>
-              <ul className="space-y-2.5 text-xs text-slate-600">
-                {categories.map((cat) => (
-                  <li
-                    key={cat.id}
-                    onClick={() => setActiveFilter(cat.slug)}
-                    className="hover:text-slate-900 cursor-pointer transition-colors"
-                  >
-                    {cat.name}
-                  </li>
-                ))}
-              </ul>
-            </div>
-
-            <div>
-              <p className="text-[10px] tracking-[0.3em] uppercase text-slate-500 mb-4">
-                Company
-              </p>
-              <ul className="space-y-2.5 text-xs text-slate-600">
-                <li>
-                  <Link
-                    target="_blank"
-                    href="http://loistech.com.ng/#us"
-                    className="hover:text-slate-900 transition-colors"
-                  >
-                    About
-                  </Link>
-                </li>
-                <li>
-                  <Link
-                    target="_blank"
-                    href="http://loistech.com.ng/#testimonies"
-                    className="hover:text-slate-900 transition-colors"
-                  >
-                    Testimonials
-                  </Link>
-                </li>
-                <li>
-                  <Link
-                    target="_blank"
-                    href="http://loistech.com.ng/#hiring"
-                    className="hover:text-slate-900 transition-colors"
-                  >
-                    Careers
-                  </Link>
-                </li>
-              </ul>
-            </div>
-
-            {/* TRUST & POLICIES */}
-            <div>
-              <p className="text-[10px] tracking-[0.3em] uppercase text-slate-500 mb-4">
-                Trust & Policies
-              </p>
-              <ul className="space-y-2.5 text-xs text-slate-600">
-                <li>
-                  <Link
-                    href="/policies/sop"
-                    className="hover:text-slate-900 transition-colors"
-                  >
-                    4-Phase SOP Summary
-                  </Link>
-                </li>
-                <li>
-                  <Link
-                    target="_blank"
-                    href="https://loistech.com.ng/privacy.html"
-                    className="hover:text-slate-900 transition-colors"
-                  >
-                    Privacy Policy
-                  </Link>
-                </li>
-                <li>
-                  <Link
-                    target="_blank"
-                    href="https://loistech.com.ng/tc.html"
-                    className="hover:text-slate-900 transition-colors"
-                  >
-                    Terms & Conditions
-                  </Link>
-                </li>
-              </ul>
-            </div>
-          </div>
-
-          <div className="border-t border-slate-200/60 mt-10 sm:mt-12 pt-6 flex flex-col sm:flex-row justify-between items-center gap-4 text-[10px] text-slate-500 tracking-widest uppercase">
-            <p>© {new Date().getFullYear()} LoisTech. All rights reserved.</p>
-            <div className="flex gap-6">
-              <a
-                href="https://www.instagram.com/l0istech?igsh=NzczbDQ4d2RheGx2"
-                target="_blank"
-                className="hover:text-slate-900 cursor-pointer transition-colors"
-              >
-                Instagram
-              </a>
-              <a
-                href="https://www.facebook.com/share/1GgpCW8D73/"
-                target="_blank"
-                className="hover:text-slate-900 cursor-pointer transition-colors"
-              >
-                Facebook
-              </a>
-              <a
-                href="https://ng.linkedin.com/in/lois-tech-491a15380"
-                target="_blank"
-                className="hover:text-slate-900 cursor-pointer transition-colors"
-              >
-                LinkedIn
-              </a>
-            </div>
-          </div>
-        </div>
-      </footer>
+      <Footer categories={categories} onCategoryClick={setActiveFilter} />
     </div>
   );
 }
