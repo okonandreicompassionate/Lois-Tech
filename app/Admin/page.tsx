@@ -4,7 +4,10 @@ import { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
 import { supabase } from "../../lib/supabase";
 import { Plus, Trash2, CheckCircle } from "lucide-react";
-import { clampDiscountPercentage, persistProductDiscount } from "../../lib/pricing";
+import {
+  clampDiscountPercentage,
+  persistProductDiscount,
+} from "../../lib/pricing";
 
 const ADMIN_PASSWORD = process.env.NEXT_PUBLIC_ADMIN_PASSWORD ?? "";
 
@@ -12,7 +15,8 @@ type Category = { id: string; name: string; slug: string };
 type VariantRow = { client_id: string; option_value: string; stock: number };
 type ImageRow = { client_id: string; url: string };
 
-const inputClass = "w-full bg-white border border-slate-300 text-slate-900 text-sm px-4 py-3 rounded-xl outline-none focus:border-slate-500 focus:ring-1 focus:ring-slate-200 transition-colors placeholder-slate-400";
+const inputClass =
+  "w-full bg-white border border-slate-300 text-slate-900 text-sm px-4 py-3 rounded-xl outline-none focus:border-slate-500 focus:ring-1 focus:ring-slate-200 transition-colors placeholder-slate-400";
 
 function createRowId() {
   return typeof crypto !== "undefined" && "randomUUID" in crypto
@@ -69,23 +73,35 @@ export default function AdminPage() {
     else alert("Wrong password!");
   }
 
-  function handleFormChange(e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement | HTMLTextAreaElement>) {
+  function handleFormChange(
+    e: React.ChangeEvent<
+      HTMLInputElement | HTMLSelectElement | HTMLTextAreaElement
+    >,
+  ) {
     const target = e.target;
-    const value = target instanceof HTMLInputElement && target.type === "checkbox"
-      ? target.checked
-      : target.value;
+    const value =
+      target instanceof HTMLInputElement && target.type === "checkbox"
+        ? target.checked
+        : target.value;
     setForm({ ...form, [target.name]: value });
   }
 
   function addVariantRow() {
-    setVariants([...variants, { client_id: createRowId(), option_value: "", stock: 0 }]);
+    setVariants([
+      ...variants,
+      { client_id: createRowId(), option_value: "", stock: 0 },
+    ]);
   }
 
   function removeVariantRow(idx: number) {
     setVariants(variants.filter((_, i) => i !== idx));
   }
 
-  function updateVariant(idx: number, field: keyof VariantRow, value: string | number) {
+  function updateVariant(
+    idx: number,
+    field: keyof VariantRow,
+    value: string | number,
+  ) {
     const updated = [...variants];
     updated[idx] = { ...updated[idx], [field]: value };
     setVariants(updated);
@@ -111,14 +127,20 @@ export default function AdminPage() {
       return;
     }
 
-    let variantsToInsert: { option_label: string; option_value: string; stock: number }[] = [];
+    let variantsToInsert: {
+      option_label: string;
+      option_value: string;
+      stock: number;
+    }[] = [];
 
     if (hasVariants) {
       if (!optionLabel.trim()) {
         alert("Give your option a name (e.g. Color, Wattage)!");
         return;
       }
-      const validVariants = variants.filter((v) => v.option_value.trim() !== "");
+      const validVariants = variants.filter(
+        (v) => v.option_value.trim() !== "",
+      );
       if (validVariants.length === 0) {
         alert(`Add at least one ${optionLabel} value!`);
         return;
@@ -138,7 +160,9 @@ export default function AdminPage() {
 
     try {
       const priceInKobo = Math.round(parseFloat(form.price) * 100);
-      const discountPercentage = clampDiscountPercentage(form.discount_percentage);
+      const discountPercentage = clampDiscountPercentage(
+        form.discount_percentage,
+      );
 
       const { data: product, error: productError } = await supabase
         .from("products")
@@ -160,14 +184,12 @@ export default function AdminPage() {
         return;
       }
 
-      const { error: variantError } = await supabase
-        .from("variants")
-        .insert(
-          variantsToInsert.map((v) => ({
-            product_id: product.id,
-            ...v,
-          }))
-        );
+      const { error: variantError } = await supabase.from("variants").insert(
+        variantsToInsert.map((v) => ({
+          product_id: product.id,
+          ...v,
+        })),
+      );
 
       if (variantError) {
         alert("Failed to add variants: " + variantError.message);
@@ -187,7 +209,7 @@ export default function AdminPage() {
               product_id: product.id,
               image_url: url,
               position: idx,
-            }))
+            })),
           );
 
         if (imageError) {
@@ -220,7 +242,6 @@ export default function AdminPage() {
         { client_id: createRowId(), url: "" },
       ]);
       setTimeout(() => setSuccess(false), 3000);
-
     } catch (err) {
       console.error(err);
       alert("Something went wrong!");
@@ -234,8 +255,12 @@ export default function AdminPage() {
       <div className="min-h-screen bg-slate-200 text-slate-900 flex items-center justify-center px-4 font-titillium">
         <div className="w-full max-w-sm space-y-6">
           <div className="text-center">
-            <h1 className="font-semibold tracking-[0.3em] text-sm uppercase mb-2">LOIS TECH</h1>
-            <p className="text-slate-500 text-xs tracking-widest uppercase">Admin Access</p>
+            <h1 className="font-semibold tracking-[0.3em] text-sm uppercase mb-2">
+              LOIS TECH
+            </h1>
+            <p className="text-slate-500 text-xs tracking-widest uppercase">
+              Admin Access
+            </p>
           </div>
           <div className="space-y-3">
             <input
@@ -260,22 +285,34 @@ export default function AdminPage() {
 
   return (
     <div className="min-h-screen bg-slate-200 text-slate-900 font-titillium">
-
       <nav className="sticky top-0 z-50 bg-slate-200/80 backdrop-blur-xl border-b border-slate-300/60">
         <div className="max-w-4xl mx-auto px-4 sm:px-8 py-4 flex items-center justify-between">
           <div className="flex items-center gap-6">
-            <h1 className="font-semibold tracking-[0.3em] text-sm uppercase">LOIS TECH Admin</h1>
+            <h1 className="font-semibold tracking-[0.3em] text-sm uppercase">
+              LOIS TECH Admin
+            </h1>
             <span className="text-slate-400 text-xs">|</span>
-            <span className="text-slate-500 text-xs tracking-widest uppercase">Add Product</span>
+            <span className="text-slate-500 text-xs tracking-widest uppercase">
+              Add Product
+            </span>
           </div>
           <div className="flex items-center gap-4">
-            <button onClick={() => router.push("/Admin/edit")} className="text-xs tracking-widest uppercase text-slate-500 hover:text-slate-900 transition-colors">
+            <button
+              onClick={() => router.push("/Admin/edit")}
+              className="text-xs tracking-widest uppercase text-slate-500 hover:text-slate-900 transition-colors"
+            >
               Edit Products
             </button>
-            <button onClick={() => router.push("/Admin/orders")} className="text-xs tracking-widest uppercase text-slate-500 hover:text-slate-900 transition-colors">
+            <button
+              onClick={() => router.push("/Admin/orders")}
+              className="text-xs tracking-widest uppercase text-slate-500 hover:text-slate-900 transition-colors"
+            >
               Orders
             </button>
-            <button onClick={() => router.push("/")} className="text-xs tracking-widest uppercase text-slate-500 hover:text-slate-900 transition-colors">
+            <button
+              onClick={() => router.push("/")}
+              className="text-xs tracking-widest uppercase text-slate-500 hover:text-slate-900 transition-colors"
+            >
               View Shop
             </button>
           </div>
@@ -283,7 +320,6 @@ export default function AdminPage() {
       </nav>
 
       <div className="max-w-4xl mx-auto px-4 sm:px-8 py-10 pb-24">
-
         {success && (
           <div className="flex items-center gap-3 bg-green-50 border border-green-200 text-green-700 px-4 py-3 rounded-xl mb-6 text-sm">
             <CheckCircle size={16} />
@@ -292,10 +328,8 @@ export default function AdminPage() {
         )}
 
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
-
           {/* LEFT — BASIC INFO */}
           <div className="space-y-6">
-
             <div className="bg-white border border-slate-200 rounded-2xl p-5">
               <p className="text-[10px] tracking-[0.4em] uppercase text-slate-400 mb-4">
                 Product Info
@@ -321,7 +355,9 @@ export default function AdminPage() {
 
                 <div className="grid grid-cols-2 gap-3">
                   <div className="relative">
-                    <span className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-400 text-sm">₦</span>
+                    <span className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-400 text-sm">
+                      ₦
+                    </span>
                     <input
                       type="number"
                       name="price"
@@ -358,29 +394,58 @@ export default function AdminPage() {
                     min="0"
                     max="100"
                   />
-                  <span className="absolute right-4 top-1/2 -translate-y-1/2 text-slate-400 text-sm">%</span>
+                  <span className="absolute right-4 top-1/2 -translate-y-1/2 text-slate-400 text-sm">
+                    %
+                  </span>
                 </div>
 
                 <label className="flex items-center gap-3 px-4 py-3 bg-slate-50 border border-slate-200 rounded-xl cursor-pointer hover:border-slate-300 transition-colors">
-                  <div className={`w-10 h-5 rounded-full transition-colors relative flex-shrink-0 ${form.is_featured ? "bg-slate-900" : "bg-slate-300"}`}>
-                    <div className={`absolute top-0.5 w-4 h-4 bg-white rounded-full transition-all shadow ${form.is_featured ? "left-5" : "left-0.5"}`} />
+                  <div
+                    className={`w-10 h-5 rounded-full transition-colors relative flex-shrink-0 ${form.is_featured ? "bg-slate-900" : "bg-slate-300"}`}
+                  >
+                    <div
+                      className={`absolute top-0.5 w-4 h-4 bg-white rounded-full transition-all shadow ${form.is_featured ? "left-5" : "left-0.5"}`}
+                    />
                   </div>
                   <div>
                     <p className="text-xs text-slate-900">Mark as Featured</p>
-                    <p className="text-[10px] text-slate-500">Shows &quot;Featured&quot; badge on product card</p>
+                    <p className="text-[10px] text-slate-500">
+                      Shows &quot;Featured&quot; badge on product card
+                    </p>
                   </div>
-                  <input type="checkbox" name="is_featured" checked={form.is_featured} onChange={handleFormChange} className="hidden" />
+                  <input
+                    type="checkbox"
+                    name="is_featured"
+                    checked={form.is_featured}
+                    onChange={handleFormChange}
+                    className="hidden"
+                  />
                 </label>
 
                 <label className="flex items-center gap-3 px-4 py-3 bg-amber-50 border border-amber-200 rounded-xl cursor-pointer hover:border-amber-300 transition-colors">
-                  <div className={`w-10 h-5 rounded-full transition-colors relative flex-shrink-0 ${form.is_commission ? "bg-amber-500" : "bg-slate-300"}`}>
-                    <div className={`absolute top-0.5 w-4 h-4 bg-white rounded-full transition-all shadow ${form.is_commission ? "left-5" : "left-0.5"}`} />
+                  <div
+                    className={`w-10 h-5 rounded-full transition-colors relative flex-shrink-0 ${form.is_commission ? "bg-amber-500" : "bg-slate-300"}`}
+                  >
+                    <div
+                      className={`absolute top-0.5 w-4 h-4 bg-white rounded-full transition-all shadow ${form.is_commission ? "left-5" : "left-0.5"}`}
+                    />
                   </div>
                   <div>
-                    <p className="text-xs text-slate-900">Commission / Bespoke Item</p>
-                    <p className="text-[10px] text-amber-700">Shows &quot;Request Consultation&quot; instead of Add to Cart</p>
+                    <p className="text-xs text-slate-900">
+                      Commission / Bespoke Item
+                    </p>
+                    <p className="text-[10px] text-amber-700">
+                      Shows &quot;Request Consultation&quot; instead of Add to
+                      Cart
+                    </p>
                   </div>
-                  <input type="checkbox" name="is_commission" checked={form.is_commission} onChange={handleFormChange} className="hidden" />
+                  <input
+                    type="checkbox"
+                    name="is_commission"
+                    checked={form.is_commission}
+                    onChange={handleFormChange}
+                    className="hidden"
+                  />
                 </label>
               </div>
             </div>
@@ -403,7 +468,9 @@ export default function AdminPage() {
                   }`}
                 >
                   <span className="block">Single Item</span>
-                  <span className={`block text-[10px] mt-0.5 ${!hasVariants ? "text-white/60" : "text-slate-400"}`}>
+                  <span
+                    className={`block text-[10px] mt-0.5 ${!hasVariants ? "text-white/60" : "text-slate-400"}`}
+                  >
                     Just one version — set total stock
                   </span>
                 </button>
@@ -417,7 +484,9 @@ export default function AdminPage() {
                   }`}
                 >
                   <span className="block">Has Options</span>
-                  <span className={`block text-[10px] mt-0.5 ${hasVariants ? "text-white/60" : "text-slate-400"}`}>
+                  <span
+                    className={`block text-[10px] mt-0.5 ${hasVariants ? "text-white/60" : "text-slate-400"}`}
+                  >
                     e.g. different colors, wattages
                   </span>
                 </button>
@@ -426,17 +495,22 @@ export default function AdminPage() {
               {/* SINGLE ITEM */}
               {!hasVariants && (
                 <div>
-                  <label className="text-xs text-slate-500 mb-2 block">Total stock available</label>
+                  <label className="text-xs text-slate-500 mb-2 block">
+                    Total stock available
+                  </label>
                   <input
                     type="number"
                     min={0}
                     placeholder="e.g. 10"
                     value={singleStock}
-                    onChange={(e) => setSingleStock(parseInt(e.target.value) || 0)}
+                    onChange={(e) =>
+                      setSingleStock(parseInt(e.target.value) || 0)
+                    }
                     className={inputClass}
                   />
                   <p className="text-[10px] text-slate-400 mt-2">
-                    Customers will see a simple &quot;Add to Cart&quot; button — no options to pick.
+                    Customers will see a simple &quot;Add to Cart&quot; button —
+                    no options to pick.
                   </p>
                 </div>
               )}
@@ -456,32 +530,42 @@ export default function AdminPage() {
                       className={inputClass}
                     />
                     <div className="flex gap-2 flex-wrap mt-2">
-                      {["Color", "Finish", "Wattage", "Storage", "Model"].map((label) => (
-                        <button
-                          key={label}
-                          type="button"
-                          onClick={() => setOptionLabel(label)}
-                          className="px-3 py-1.5 rounded-lg text-[11px] bg-slate-50 text-slate-500 border border-slate-200 hover:border-slate-400 hover:text-slate-900 transition-colors"
-                        >
-                          {label}
-                        </button>
-                      ))}
+                      {["Color", "Finish", "Wattage", "Storage", "Model"].map(
+                        (label) => (
+                          <button
+                            key={label}
+                            type="button"
+                            onClick={() => setOptionLabel(label)}
+                            className="px-3 py-1.5 rounded-lg text-[11px] bg-slate-50 text-slate-500 border border-slate-200 hover:border-slate-400 hover:text-slate-900 transition-colors"
+                          >
+                            {label}
+                          </button>
+                        ),
+                      )}
                     </div>
                     {optionLabel && (
                       <p className="text-[10px] text-slate-400 mt-2">
-                        Customers will see: <span className="text-slate-600">&quot;Select {optionLabel}&quot;</span>
+                        Customers will see:{" "}
+                        <span className="text-slate-600">
+                          &quot;Select {optionLabel}&quot;
+                        </span>
                       </p>
                     )}
                   </div>
 
                   <div className="space-y-2">
                     {variants.map((v, idx) => (
-                      <div key={v.client_id} className="flex items-center gap-2">
+                      <div
+                        key={v.client_id}
+                        className="flex items-center gap-2"
+                      >
                         <input
                           type="text"
                           placeholder={`${optionLabel || "Option"} value (e.g. Black)`}
                           value={v.option_value}
-                          onChange={(e) => updateVariant(idx, "option_value", e.target.value)}
+                          onChange={(e) =>
+                            updateVariant(idx, "option_value", e.target.value)
+                          }
                           className={`${inputClass} flex-1`}
                         />
                         <input
@@ -489,7 +573,13 @@ export default function AdminPage() {
                           min={0}
                           placeholder="Stock"
                           value={v.stock}
-                          onChange={(e) => updateVariant(idx, "stock", parseInt(e.target.value) || 0)}
+                          onChange={(e) =>
+                            updateVariant(
+                              idx,
+                              "stock",
+                              parseInt(e.target.value) || 0,
+                            )
+                          }
                           className={`${inputClass} w-24`}
                         />
                         <button
@@ -514,12 +604,10 @@ export default function AdminPage() {
                 </>
               )}
             </div>
-
           </div>
 
           {/* RIGHT — IMAGES */}
           <div className="space-y-6">
-
             <div className="bg-white border border-slate-200 rounded-2xl p-5">
               <p className="text-[10px] tracking-[0.4em] uppercase text-slate-400 mb-4">
                 Main Image (Shop Grid)
@@ -538,7 +626,9 @@ export default function AdminPage() {
                     src={form.image_url}
                     alt="Preview"
                     className="w-full h-full object-cover"
-                    onError={(e) => { (e.target as HTMLImageElement).style.display = "none"; }}
+                    onError={(e) => {
+                      (e.target as HTMLImageElement).style.display = "none";
+                    }}
                   />
                 </div>
               )}
@@ -576,7 +666,10 @@ export default function AdminPage() {
                             src={image.url}
                             alt={`Preview ${idx + 1}`}
                             className="w-full h-full object-cover"
-                            onError={(e) => { (e.target as HTMLImageElement).style.display = "none"; }}
+                            onError={(e) => {
+                              (e.target as HTMLImageElement).style.display =
+                                "none";
+                            }}
                           />
                         </div>
                       )}
@@ -594,11 +687,12 @@ export default function AdminPage() {
 
               <div className="mt-4 px-4 py-3 bg-slate-50 rounded-xl border border-slate-200">
                 <p className="text-[10px] text-slate-500 leading-relaxed">
-                  💡 Upload photos at <span className="text-slate-700">imgur.com</span> → right click image → Copy Image Address → paste above
+                  💡 Upload photos at{" "}
+                  <span className="text-slate-700">imgur.com</span> → right
+                  click image → Copy Image Address → paste above
                 </p>
               </div>
             </div>
-
           </div>
         </div>
 
@@ -618,7 +712,6 @@ export default function AdminPage() {
             Product goes live instantly after adding
           </p>
         </div>
-
       </div>
     </div>
   );

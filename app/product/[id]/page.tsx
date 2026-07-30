@@ -50,7 +50,7 @@ export default function ProductPage() {
   const [loading, setLoading] = useState(true);
   const [added, setAdded] = useState(false);
 
-  const allVariantsSoldOut = product
+  const productSoldOut = product
     ? product.variants.length > 0 &&
       product.variants.every((variant) => variant.stock <= 0)
     : false;
