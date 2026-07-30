@@ -272,7 +272,20 @@ export default function Footer({ categories, onCategoryClick }: FooterProps) {
         </div>
 
         <div className="border-t border-slate-200/60 mt-10 sm:mt-12 pt-6 flex flex-col sm:flex-row justify-between items-center gap-4 text-[10px] text-slate-500 tracking-widest uppercase">
-          <p>© {currentYear} LoisTech. All rights reserved.</p>
+          <div className="text-center sm:text-left">
+            <p>© {currentYear} LoisTech. All rights reserved.</p>
+            <p className="mt-1 normal-case tracking-normal text-slate-400">
+              Built by{" "}
+              <a
+                href="https://andrei-resume.vercel.app/"
+                target="_blank"
+                rel="noreferrer"
+                className="text-slate-500 hover:text-slate-900 transition-colors"
+              >
+                Andrei Okon
+              </a>
+            </p>
+          </div>
           <div className="flex gap-6">
             {socialLinks.map((link) => (
               <a

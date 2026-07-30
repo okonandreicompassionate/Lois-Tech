@@ -9,7 +9,9 @@ import {
   persistProductDiscount,
 } from "../../lib/pricing";
 
-const ADMIN_PASSWORD = process.env.NEXT_PUBLIC_ADMIN_PASSWORD ?? "";
+const ADMIN_PASSWORD = process.env.NEXT_PUBLIC_ADMIN_PASSWORD ?? "admin1234";
+const SUPERADMIN_PASSWORD =
+  process.env.NEXT_PUBLIC_SUPERADMIN_PASSWORD ?? "superadmin1234";
 
 type Category = { id: string; name: string; slug: string };
 type VariantRow = { client_id: string; option_value: string; stock: number };
@@ -28,6 +30,7 @@ export default function AdminPage() {
   const router = useRouter();
 
   const [authed, setAuthed] = useState(false);
+  const [role, setRole] = useState<"admin" | "superadmin" | null>(null);
   const [password, setPassword] = useState("");
   const [categories, setCategories] = useState<Category[]>([]);
   const [loading, setLoading] = useState(false);
@@ -63,14 +66,47 @@ export default function AdminPage() {
   }
 
   useEffect(() => {
+    const savedAuth =
+      typeof window !== "undefined" && localStorage.getItem("adminAuthed");
+    const savedRole =
+      typeof window !== "undefined" && localStorage.getItem("adminRole");
+    if (
+      savedAuth === "true" &&
+      (savedRole === "admin" || savedRole === "superadmin")
+    ) {
+      setAuthed(true);
+      setRole(savedRole);
+    }
+  }, []);
+
+  useEffect(() => {
     if (authed) {
       fetchCategories();
     }
   }, [authed]);
 
   function handleLogin() {
-    if (password === ADMIN_PASSWORD) setAuthed(true);
-    else alert("Wrong password!");
+    if (password === SUPERADMIN_PASSWORD) {
+      setAuthed(true);
+      setRole("superadmin");
+      localStorage.setItem("adminAuthed", "true");
+      localStorage.setItem("adminRole", "superadmin");
+    } else if (password === ADMIN_PASSWORD) {
+      setAuthed(true);
+      setRole("admin");
+      localStorage.setItem("adminAuthed", "true");
+      localStorage.setItem("adminRole", "admin");
+    } else {
+      alert("Wrong password!");
+    }
+  }
+
+  function handleLogout() {
+    setAuthed(false);
+    setRole(null);
+    setPassword("");
+    localStorage.removeItem("adminAuthed");
+    localStorage.removeItem("adminRole");
   }
 
   function handleFormChange(
@@ -304,16 +340,36 @@ export default function AdminPage() {
               Edit Products
             </button>
             <button
+              onClick={() => router.push("/Admin/hero")}
+              className="text-xs tracking-widest uppercase text-slate-500 hover:text-slate-900 transition-colors"
+            >
+              Hero Slides
+            </button>
+            <button
               onClick={() => router.push("/Admin/orders")}
               className="text-xs tracking-widest uppercase text-slate-500 hover:text-slate-900 transition-colors"
             >
               Orders
             </button>
+            {role === "superadmin" && (
+              <button
+                onClick={() => router.push("/Admin/manage")}
+                className="text-xs tracking-widest uppercase text-slate-500 hover:text-slate-900 transition-colors"
+              >
+                Admin Users
+              </button>
+            )}
             <button
               onClick={() => router.push("/")}
               className="text-xs tracking-widest uppercase text-slate-500 hover:text-slate-900 transition-colors"
             >
               View Shop
+            </button>
+            <button
+              onClick={handleLogout}
+              className="text-xs tracking-widest uppercase text-slate-500 hover:text-slate-900 transition-colors"
+            >
+              Logout
             </button>
           </div>
         </div>

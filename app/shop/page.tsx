@@ -11,6 +11,7 @@ import {
   getDiscountedPrice,
 } from "../../lib/pricing";
 import Footer from "../components/Footer";
+import HeroSection from "../components/HeroSection";
 
 type Variant = {
   id: string;
@@ -244,40 +245,7 @@ export default function LandingPage() {
       </nav>
 
       {/* HERO */}
-      <div className="relative w-full h-[60vh] sm:h-[70vh] lg:h-screen overflow-hidden">
-        <img
-          src="https://i.imgur.com/uPgwKby.jpeg"
-          alt="Hero"
-          className="w-full h-full object-cover grayscale brightness-75 contrast-90"
-        />
-        <div className="absolute inset-0 bg-gradient-to-b from-black/25 via-black/10 to-slate-200" />
-
-        {/* gradient overlay */}
-        <div className="absolute inset-0 bg-gradient-to-t from-slate-200/50 via-black/30 to-transparent" />
-
-        <div className="absolute bottom-24 sm:bottom-32 lg:bottom-40 left-4 sm:left-8 lg:left-16 right-4 sm:right-8 lg:right-auto">
-          <p className="text-[10px] sm:text-[12px] tracking-[0.3em] sm:tracking-[0.5em] uppercase text-slate-200/80 mb-3 sm:mb-4">
-            The Future of
-          </p>
-
-          <h2 className="text-3xl sm:text-5xl lg:text-7xl font-semibold leading-none tracking-tight text-white drop-shadow-lg">
-            Intelligent
-            <br />
-            Living
-          </h2>
-
-          <p className="text-[9px] sm:text-[10px] lg:text-[11px] tracking-[0.2em] sm:tracking-[0.4em] uppercase text-white mt-4 sm:mt-5 max-w-[280px] sm:max-w-none leading-relaxed">
-            Smart Automation · Security Systems · Acoustic & Interior
-            Integration
-          </p>
-        </div>
-
-        <div className="absolute bottom-6 sm:bottom-10 left-1/2 -translate-x-1/2 flex flex-col items-center gap-2">
-          <div className="w-6 h-6 sm:w-7 sm:h-7 rounded-full border border-gray-50/40 flex items-center justify-center animate-bounce">
-            <ChevronDown size={11} className="text-white" />
-          </div>
-        </div>
-      </div>
+      <HeroSection />
 
       {/* SHOP BY CATEGORY */}
       <div className="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8 pt-10 sm:pt-16 pb-6 sm:pb-8">
@@ -479,10 +447,17 @@ export default function LandingPage() {
                         Custom pricing on consultation
                       </p>
                     ) : (
-                      <div className="flex items-center gap-2">
-                        <p className="text-base font-semibold text-slate-900">
-                          {formatCurrency(finalPrice)}
-                        </p>
+                      <div className="flex items-center gap-3">
+                        <div className="flex items-baseline gap-2">
+                          <p className="text-base font-semibold text-slate-900">
+                            {formatCurrency(finalPrice)}
+                          </p>
+                          {discountPercentage > 0 && (
+                            <p className="text-xs line-through text-slate-400">
+                              {formatCurrency(product.price)}
+                            </p>
+                          )}
+                        </div>
                         {discountPercentage > 0 && (
                           <span className="text-xs text-emerald-600 font-medium">
                             {discountPercentage}% off
