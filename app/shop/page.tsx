@@ -88,18 +88,26 @@ export default function LandingPage() {
     fetchData();
   }, []);
 
+  const categorySlugById = Object.fromEntries(
+    categories.map((cat) => [cat.id, cat.slug]),
+  );
+
+  const categoryNameById = Object.fromEntries(
+    categories.map((cat) => [cat.id, cat.name]),
+  );
+
   const filteredProducts = products
     .filter((p) => {
       if (activeFilter === "ALL") return true;
       if (activeFilter === "FEATURED") return p.is_featured;
-      return p.categories?.[0]?.slug === activeFilter;
+      return categorySlugById[p.category_id] === activeFilter;
     })
     .filter((p) => {
       if (!searchQuery.trim()) return true;
       const q = searchQuery.trim().toLowerCase();
       return (
         p.name.toLowerCase().includes(q) ||
-        (p.categories?.[0]?.name ?? "").toLowerCase().includes(q)
+        (categoryNameById[p.category_id] ?? "").toLowerCase().includes(q)
       );
     });
 
@@ -419,8 +427,9 @@ export default function LandingPage() {
                 discountPercentage,
               );
               const isSoldOut =
-                product.variants.length === 0 ||
-                product.variants.every((variant) => variant.stock <= 0);
+                product.variants.length > 0
+                  ? product.variants.every((variant) => variant.stock <= 0)
+                  : product.stock <= 0;
 
               return (
                 <div

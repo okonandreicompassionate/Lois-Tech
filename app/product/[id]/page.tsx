@@ -31,6 +31,7 @@ type Product = {
   description: string;
   image_url: string;
   price: number;
+  stock: number;
   discount_percentage?: number | null;
   is_commission: boolean;
   categories: { name: string }[] | null;
@@ -51,8 +52,9 @@ export default function ProductPage() {
   const [added, setAdded] = useState(false);
 
   const productSoldOut = product
-    ? product.variants.length > 0 &&
-      product.variants.every((variant) => variant.stock <= 0)
+    ? product.variants.length > 0
+      ? product.variants.every((variant) => variant.stock <= 0)
+      : product.stock <= 0
     : false;
 
   useEffect(() => {
@@ -66,6 +68,7 @@ export default function ProductPage() {
           description,
           image_url,
           price,
+          stock,
           is_commission,
           categories ( name ),
           variants ( id, option_label, option_value, stock ),
